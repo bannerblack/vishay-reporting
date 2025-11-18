@@ -1,0 +1,8 @@
+sea-orm-cli migrate init -d ./other/migration/dir
+sea-orm-cli migrate generate "create table" -d ./other/migration/dir
+
+$env:DATABASE_URL = 'sqlite:///C:/Users/bashleigh/Desktop/ProductionProjects/REMOTE/voltech.sqlite?mode=rwc'
+sea-orm-cli migrate up -d ./other/migration/dir
+sea-orm-cli generate entity -o entity/src
+
+# generate entities uses db set

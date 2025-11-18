@@ -1,0 +1,13 @@
+// Main database orchestrator - exports all adapters
+export * as user from './adapters/user';
+export * as fg from './adapters/fg';
+export * as report from './adapters/report';
+export * as test from './adapters/test';
+export * as joins from './adapters/joins';
+
+// Export types
+export * from './adapters/user';
+export * from './adapters/fg';
+export * from './adapters/report';
+export * from './adapters/test';
+export * from './adapters/joins';
