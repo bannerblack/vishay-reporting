@@ -73,7 +73,7 @@ pub async fn get_user(state: State<'_, AppState>, id: i32) -> Result<UserRespons
     let db = &*state.core_db;
 
     let user = user::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch user: {}", e))?
         .ok_or_else(|| "User not found".to_string())?;
@@ -98,7 +98,7 @@ pub async fn get_user_by_username(state: State<'_, AppState>, username: String) 
 
     let user = user::Entity::find()
         .filter(user::Column::Username.eq(username))
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch user: {}", e))?
         .ok_or_else(|| "User not found".to_string())?;
@@ -119,7 +119,7 @@ pub async fn get_all_users(state: State<'_, AppState>) -> Result<Vec<UserRespons
     let db = &*state.core_db;
 
     let users = user::Entity::find()
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch users: {}", e))?;
 
@@ -142,7 +142,7 @@ pub async fn update_user(state: State<'_, AppState>, id: i32, user_data: UserDat
     let db = &*state.core_db;
 
     let user = user::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch user: {}", e))?
         .ok_or_else(|| "User not found".to_string())?;
@@ -155,7 +155,7 @@ pub async fn update_user(state: State<'_, AppState>, id: i32, user_data: UserDat
     user.added_by = Set(user_data.added_by);
 
     let user: user::Model = user
-        .update(&db)
+        .update(db)
         .await
         .map_err(|e| format!("Failed to update user: {}", e))?;
 
@@ -175,14 +175,14 @@ pub async fn delete_user(state: State<'_, AppState>, id: i32) -> Result<String, 
     let db = &*state.core_db;
 
     let user = user::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch user: {}", e))?
         .ok_or_else(|| "User not found".to_string())?;
 
     let user: user::ActiveModel = user.into();
     user
-        .delete(&db)
+        .delete(db)
         .await
         .map_err(|e| format!("Failed to delete user: {}", e))?;
 

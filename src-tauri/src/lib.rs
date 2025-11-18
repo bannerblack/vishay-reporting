@@ -6,9 +6,12 @@ mod fg;
 mod report;
 mod joins;
 mod test;
+mod voltech;
+
+use tauri::Manager;
 
 use migration::{DbErr as CoreDbErr, Migrator as CoreMigrator, MigratorTrait as CoreMigratorTrait};
-use migration_event::{DbErr as EventDbErr, Migrator as EventMigrator, MigratorTrait as EventMigratorTrait};
+// use migration_event::{DbErr as EventDbErr, Migrator as EventMigrator, MigratorTrait as EventMigratorTrait};
 use migration_voltech::{DbErr as VoltechDbErr, Migrator as VoltechMigrator, MigratorTrait as VoltechMigratorTrait};
 use sea_orm::{Database, DbConn};
 use std::sync::Arc;
@@ -36,7 +39,7 @@ pub async fn establish_core_connection() -> Result<DbConn, CoreDbErr> {
             std::fs::create_dir_all(&app_data)
                 .expect("Failed to create app data directory");
             let db_path = app_data.join("vishay.db");
-            format!("sqlite://{}?mode=rwc", db_path.display())
+            format!("sqlite:///C:/Users/bashleigh/Desktop/ProductionProjects/REMOTE/testing.sqlite?mode=rwc")
         });
     
     let db = Database::connect(&database_url)
@@ -84,7 +87,7 @@ pub async fn establish_voltech_connection() -> Result<DbConn, VoltechDbErr> {
             std::fs::create_dir_all(&app_data)
                 .expect("Failed to create app data directory");
             let db_path = app_data.join("voltech.db");
-            format!("sqlite://{}?mode=rwc", db_path.display())
+            format!("sqlite:///C:/Users/bashleigh/Desktop/ProductionProjects/REMOTE/voltech.sqlite?mode=rwc")
         });
     
     let db = Database::connect(&database_url)
@@ -176,13 +179,11 @@ pub fn run() {
             // Initialize database connections
             let runtime = tokio::runtime::Runtime::new().unwrap();
             let core_db = runtime.block_on(establish_core_connection()).unwrap();
-            let event_db = runtime.block_on(establish_event_connection()).unwrap();
             let voltech_db = runtime.block_on(establish_voltech_connection()).unwrap();
             
             // Store connections in app state
             app.manage(AppState {
                 core_db: Arc::new(core_db),
-                event_db: Arc::new(event_db),
                 voltech_db: Arc::new(voltech_db),
             });
             

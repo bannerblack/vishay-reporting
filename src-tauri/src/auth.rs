@@ -52,7 +52,7 @@ pub async fn authenticate_user(state: State<'_, AppState>) -> Result<Authenticat
     // Try to find user in database
     match user::Entity::find()
         .filter(user::Column::Username.eq(&username))
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch user: {}", e))?
     {
@@ -72,7 +72,7 @@ pub async fn authenticate_user(state: State<'_, AppState>) -> Result<Authenticat
         None => {
             // User not in database - check if this is initial setup
             let user_count = user::Entity::find()
-                .count(&db)
+                .count(db)
                 .await
                 .map_err(|e| format!("Failed to count users: {}", e))?;
 
@@ -93,7 +93,7 @@ pub async fn needs_initial_setup(state: State<'_, AppState>) -> Result<bool, Str
     let db = &*state.core_db;
 
     let user_count = user::Entity::find()
-        .count(&db)
+        .count(db)
         .await
         .map_err(|e| format!("Failed to count users: {}", e))?;
 
@@ -118,7 +118,7 @@ pub async fn create_initial_admin(state: State<'_, AppState>, password: String, 
     let db = &*state.core_db;
 
     let user_count = user::Entity::find()
-        .count(&db)
+        .count(db)
         .await
         .map_err(|e| format!("Failed to count users: {}", e))?;
 
@@ -142,7 +142,7 @@ pub async fn admin_create_user(
 
     let admin = user::Entity::find()
         .filter(user::Column::Username.eq(&admin_username))
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch admin user: {}", e))?
         .ok_or_else(|| "Admin user not found".to_string())?;
@@ -166,7 +166,7 @@ pub async fn user_has_permission(state: State<'_, AppState>, username: String, p
 
     let user_model = user::Entity::find()
         .filter(user::Column::Username.eq(&username))
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch user: {}", e))?
         .ok_or_else(|| "User not found".to_string())?;

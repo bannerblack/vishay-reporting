@@ -34,7 +34,7 @@ pub async fn create_fg(state: State<'_, AppState>, fg_data: FGData) -> Result<FG
     // Check if FG already exists
     let existing = fg::Entity::find()
         .filter(fg::Column::Fg.eq(&fg_data.fg))
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to check FG existence: {}", e))?;
 
@@ -50,7 +50,7 @@ pub async fn create_fg(state: State<'_, AppState>, fg_data: FGData) -> Result<FG
     };
 
     let fg_model: fg::Model = fg_model
-        .insert(&db)
+        .insert(db)
         .await
         .map_err(|e| format!("Failed to create FG: {}", e))?;
 
@@ -67,7 +67,7 @@ pub async fn get_fg(state: State<'_, AppState>, id: i32) -> Result<FGResponse, S
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
@@ -86,7 +86,7 @@ pub async fn get_fg_by_number(state: State<'_, AppState>, fg_number: String) -> 
 
     let fg_model = fg::Entity::find()
         .filter(fg::Column::Fg.eq(fg_number))
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
@@ -104,7 +104,7 @@ pub async fn get_all_fgs(state: State<'_, AppState>) -> Result<Vec<FGResponse>, 
     let db = &*state.core_db;
 
     let fgs = fg::Entity::find()
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch FGs: {}", e))?;
 
@@ -124,7 +124,7 @@ pub async fn update_fg(state: State<'_, AppState>, id: i32, fg_data: FGData) -> 
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
@@ -135,7 +135,7 @@ pub async fn update_fg(state: State<'_, AppState>, id: i32, fg_data: FGData) -> 
     fg_model.customer = Set(fg_data.customer);
 
     let fg_model: fg::Model = fg_model
-        .update(&db)
+        .update(db)
         .await
         .map_err(|e| format!("Failed to update FG: {}", e))?;
 
@@ -152,14 +152,14 @@ pub async fn delete_fg(state: State<'_, AppState>, id: i32) -> Result<String, St
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
 
     let fg_model: fg::ActiveModel = fg_model.into();
     fg_model
-        .delete(&db)
+        .delete(db)
         .await
         .map_err(|e| format!("Failed to delete FG: {}", e))?;
 

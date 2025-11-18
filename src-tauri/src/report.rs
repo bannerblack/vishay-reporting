@@ -30,7 +30,7 @@ pub async fn create_report(state: State<'_, AppState>, report_data: ReportData) 
     };
 
     let report: report::Model = report
-        .insert(&db)
+        .insert(db)
         .await
         .map_err(|e| format!("Failed to create report: {}", e))?;
 
@@ -46,7 +46,7 @@ pub async fn get_report(state: State<'_, AppState>, id: i32) -> Result<ReportRes
     let db = &*state.core_db;
 
     let report = report::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch report: {}", e))?
         .ok_or_else(|| "Report not found".to_string())?;
@@ -63,7 +63,7 @@ pub async fn get_all_reports(state: State<'_, AppState>) -> Result<Vec<ReportRes
     let db = &*state.core_db;
 
     let reports = report::Entity::find()
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch reports: {}", e))?;
 
@@ -82,7 +82,7 @@ pub async fn update_report(state: State<'_, AppState>, id: i32, report_data: Rep
     let db = &*state.core_db;
 
     let report = report::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch report: {}", e))?
         .ok_or_else(|| "Report not found".to_string())?;
@@ -93,7 +93,7 @@ pub async fn update_report(state: State<'_, AppState>, id: i32, report_data: Rep
     report.added_by = Set(report_data.added_by);
 
     let report: report::Model = report
-        .update(&db)
+        .update(db)
         .await
         .map_err(|e| format!("Failed to update report: {}", e))?;
 
@@ -109,14 +109,14 @@ pub async fn delete_report(state: State<'_, AppState>, id: i32) -> Result<String
     let db = &*state.core_db;
 
     let report = report::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch report: {}", e))?
         .ok_or_else(|| "Report not found".to_string())?;
 
     let report: report::ActiveModel = report.into();
     report
-        .delete(&db)
+        .delete(db)
         .await
         .map_err(|e| format!("Failed to delete report: {}", e))?;
 

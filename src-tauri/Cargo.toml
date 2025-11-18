@@ -32,6 +32,9 @@ tauri-plugin-clipboard = "2.1.11"
 dirs = "5.0"
 sea-orm = {  version = "2.0.0-rc.18", features = ["sqlx-sqlite", "runtime-tokio-rustls", "macros"] }
 entity = { path = "entity" }
+entity_voltech = { path = "entity_voltech" }
+chrono = "0.4"
+uuid = { version = "1.0", features = ["v4"] }
 tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread"] }
 tokio-macros = "2.6.0"
 dotenvy = "0.15"

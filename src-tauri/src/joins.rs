@@ -115,14 +115,14 @@ pub async fn get_fg_with_reports(state: State<'_, AppState>, fg_id: i32) -> Resu
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find_by_id(fg_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
 
     let reports = fg_model
         .find_related(report::Entity)
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch reports: {}", e))?;
 
@@ -147,14 +147,14 @@ pub async fn get_fg_with_tests(state: State<'_, AppState>, fg_id: i32) -> Result
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find_by_id(fg_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
 
     let tests = fg_model
         .find_related(test::Entity)
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch tests: {}", e))?;
 
@@ -192,20 +192,20 @@ pub async fn get_fg_complete(state: State<'_, AppState>, fg_id: i32) -> Result<F
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find_by_id(fg_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
 
     let reports = fg_model
         .find_related(report::Entity)
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch reports: {}", e))?;
 
     let tests = fg_model
         .find_related(test::Entity)
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch tests: {}", e))?;
 
@@ -255,13 +255,13 @@ pub async fn get_report_with_fg(state: State<'_, AppState>, report_id: i32) -> R
     let db = &*state.core_db;
 
     let report_model = report::Entity::find_by_id(report_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch report: {}", e))?
         .ok_or_else(|| "Report not found".to_string())?;
 
     let fg_model = fg::Entity::find_by_id(report_model.fg_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
@@ -284,14 +284,14 @@ pub async fn get_report_with_tests(state: State<'_, AppState>, report_id: i32) -
     let db = &*state.core_db;
 
     let report_model = report::Entity::find_by_id(report_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch report: {}", e))?
         .ok_or_else(|| "Report not found".to_string())?;
 
     let tests = report_model
         .find_related(test::Entity)
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch tests: {}", e))?;
 
@@ -328,20 +328,20 @@ pub async fn get_report_complete(state: State<'_, AppState>, report_id: i32) -> 
     let db = &*state.core_db;
 
     let report_model = report::Entity::find_by_id(report_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch report: {}", e))?
         .ok_or_else(|| "Report not found".to_string())?;
 
     let fg_model = fg::Entity::find_by_id(report_model.fg_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
 
     let tests = report_model
         .find_related(test::Entity)
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch tests: {}", e))?;
 
@@ -388,13 +388,13 @@ pub async fn get_test_with_fg(state: State<'_, AppState>, test_id: i32) -> Resul
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch test: {}", e))?
         .ok_or_else(|| "Test not found".to_string())?;
 
     let fg_model = fg::Entity::find_by_id(test_model.fg_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
@@ -422,14 +422,14 @@ pub async fn get_test_with_report(state: State<'_, AppState>, test_id: i32) -> R
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch test: {}", e))?
         .ok_or_else(|| "Test not found".to_string())?;
 
     let report_response = if let Some(report_id) = test_model.report_id {
         let report_model = report::Entity::find_by_id(report_id)
-            .one(&db)
+            .one(db)
             .await
             .map_err(|e| format!("Failed to fetch report: {}", e))?;
 
@@ -460,20 +460,20 @@ pub async fn get_test_complete(state: State<'_, AppState>, test_id: i32) -> Resu
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch test: {}", e))?
         .ok_or_else(|| "Test not found".to_string())?;
 
     let fg_model = fg::Entity::find_by_id(test_model.fg_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch FG: {}", e))?
         .ok_or_else(|| "FG not found".to_string())?;
 
     let report_response = if let Some(report_id) = test_model.report_id {
         let report_model = report::Entity::find_by_id(report_id)
-            .one(&db)
+            .one(db)
             .await
             .map_err(|e| format!("Failed to fetch report: {}", e))?;
 
@@ -513,7 +513,7 @@ pub async fn get_all_reports_with_fg(state: State<'_, AppState>) -> Result<Vec<R
     let db = &*state.core_db;
 
     let reports = report::Entity::find()
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch reports: {}", e))?;
 
@@ -521,7 +521,7 @@ pub async fn get_all_reports_with_fg(state: State<'_, AppState>) -> Result<Vec<R
 
     for report_model in reports {
         let fg_model = fg::Entity::find_by_id(report_model.fg_id)
-            .one(&db)
+            .one(db)
             .await
             .map_err(|e| format!("Failed to fetch FG: {}", e))?
             .ok_or_else(|| format!("FG {} not found", report_model.fg_id))?;
@@ -548,7 +548,7 @@ pub async fn get_all_tests_by_fg(state: State<'_, AppState>, fg_id: i32) -> Resu
 
     let tests = test::Entity::find()
         .filter(test::Column::FgId.eq(fg_id))
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch tests: {}", e))?;
 
@@ -581,7 +581,7 @@ pub async fn get_all_tests_by_report(state: State<'_, AppState>, report_id: i32)
 
     let tests = test::Entity::find()
         .filter(test::Column::ReportId.eq(report_id))
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch tests: {}", e))?;
 
@@ -615,7 +615,7 @@ pub async fn get_available_tests_for_report(state: State<'_, AppState>, report_i
 
     // Get the report to find its FG
     let report_model = report::Entity::find_by_id(report_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch report: {}", e))?
         .ok_or_else(|| "Report not found".to_string())?;
@@ -628,7 +628,7 @@ pub async fn get_available_tests_for_report(state: State<'_, AppState>, report_i
                 .is_null()
                 .or(test::Column::ReportId.ne(report_id))
         )
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch tests: {}", e))?;
 

@@ -73,7 +73,7 @@ pub async fn create_test(state: State<'_, AppState>, test_data: TestData) -> Res
     };
 
     let test_model: test::Model = test_model
-        .insert(&db)
+        .insert(db)
         .await
         .map_err(|e| format!("Failed to create test: {}", e))?;
 
@@ -102,7 +102,7 @@ pub async fn get_test(state: State<'_, AppState>, id: i32) -> Result<TestRespons
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch test: {}", e))?
         .ok_or_else(|| "Test not found".to_string())?;
@@ -132,7 +132,7 @@ pub async fn get_all_tests(state: State<'_, AppState>) -> Result<Vec<TestRespons
     let db = &*state.core_db;
 
     let tests = test::Entity::find()
-        .all(&db)
+        .all(db)
         .await
         .map_err(|e| format!("Failed to fetch tests: {}", e))?;
 
@@ -164,7 +164,7 @@ pub async fn update_test(state: State<'_, AppState>, id: i32, test_data: TestDat
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch test: {}", e))?
         .ok_or_else(|| "Test not found".to_string())?;
@@ -186,7 +186,7 @@ pub async fn update_test(state: State<'_, AppState>, id: i32, test_data: TestDat
     test_model.order = Set(test_data.order);
 
     let test_model: test::Model = test_model
-        .update(&db)
+        .update(db)
         .await
         .map_err(|e| format!("Failed to update test: {}", e))?;
 
@@ -215,14 +215,14 @@ pub async fn delete_test(state: State<'_, AppState>, id: i32) -> Result<String, 
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch test: {}", e))?
         .ok_or_else(|| "Test not found".to_string())?;
 
     let test_model: test::ActiveModel = test_model.into();
     test_model
-        .delete(&db)
+        .delete(db)
         .await
         .map_err(|e| format!("Failed to delete test: {}", e))?;
 
@@ -234,7 +234,7 @@ pub async fn assign_test_to_report(state: State<'_, AppState>, test_id: i32, rep
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch test: {}", e))?
         .ok_or_else(|| "Test not found".to_string())?;
@@ -243,7 +243,7 @@ pub async fn assign_test_to_report(state: State<'_, AppState>, test_id: i32, rep
     test_model.report_id = Set(Some(report_id));
 
     let test_model: test::Model = test_model
-        .update(&db)
+        .update(db)
         .await
         .map_err(|e| format!("Failed to assign test to report: {}", e))?;
 
@@ -272,7 +272,7 @@ pub async fn unassign_test_from_report(state: State<'_, AppState>, test_id: i32)
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch test: {}", e))?
         .ok_or_else(|| "Test not found".to_string())?;
@@ -281,7 +281,7 @@ pub async fn unassign_test_from_report(state: State<'_, AppState>, test_id: i32)
     test_model.report_id = Set(None);
 
     let test_model: test::Model = test_model
-        .update(&db)
+        .update(db)
         .await
         .map_err(|e| format!("Failed to unassign test from report: {}", e))?;
 
@@ -311,7 +311,7 @@ pub async fn update_test_order(state: State<'_, AppState>, test_id: i32, new_ord
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
-        .one(&db)
+        .one(db)
         .await
         .map_err(|e| format!("Failed to fetch test: {}", e))?
         .ok_or_else(|| "Test not found".to_string())?;
@@ -320,7 +320,7 @@ pub async fn update_test_order(state: State<'_, AppState>, test_id: i32, new_ord
     test_model.order = Set(new_order);
 
     test_model
-        .update(&db)
+        .update(db)
         .await
         .map_err(|e| format!("Failed to update test order: {}", e))?;
 
