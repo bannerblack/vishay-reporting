@@ -1,0 +1,3 @@
+[submodule "src-tauri/entity"]
+	path = src-tauri/entity
+	url = ./src-tauri/entity
