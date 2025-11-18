@@ -1,59 +1,6 @@
 use sea_orm::*;
-use sea_orm::sea_query::Expr;
 use serde::{Deserialize, Serialize};
 use entity_voltech::{test_results, prelude::*};
-
-#[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
-pub struct GlobalStats {
-    pub total_tests: i64,
-    pub total_parts: i64,
-    pub total_batches: i64,
-    pub passed_tests: i64,
-    pub failed_tests: i64,
-    pub pass_rate: f64,
-    pub total_operators: i64,
-}
-
-/// Get global database statistics
-pub async fn get_global_stats(db: &DatabaseConnection) -> Result<GlobalStats, DbErr> {
-    let result = TestResults::find()
-        .select_only()
-        .column_as(test_results::Column::Id.count(), "total_tests")
-        .column_as(test_results::Column::Part.count_distinct(), "total_parts")
-        .column_as(test_results::Column::Batch.count_distinct(), "total_batches")
-        .column_as(
-            Expr::case(
-                Expr::col(test_results::Column::PassFail).eq("Pass"),
-                1,
-            )
-            .finally(0)
-            .sum(),
-            "passed_tests",
-        )
-        .column_as(
-            Expr::case(
-                Expr::col(test_results::Column::PassFail).ne("Pass"),
-                1,
-            )
-            .finally(0)
-            .sum(),
-            "failed_tests",
-        )
-        .column_as(
-            Expr::cust_with_values(
-                "CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL)",
-                []
-            ),
-            "pass_rate",
-        )
-        .column_as(test_results::Column::Operator.count_distinct(), "total_operators")
-        .into_model::<GlobalStats>()
-        .one(db)
-        .await?
-        .ok_or(DbErr::RecordNotFound("No data found".to_string()))?;
-
-    Ok(result)
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
 pub struct DailyStats {
@@ -62,68 +9,8 @@ pub struct DailyStats {
     pub passed: i64,
     pub failed: i64,
     pub pass_rate: f64,
-    pub parts_tested: i64,
-    pub batches_tested: i64,
-}
-
-/// Get daily statistics across all parts
-pub async fn get_daily_stats(
-    db: &DatabaseConnection,
-    date_from: Option<&str>,
-    date_to: Option<&str>,
-    limit: Option<u64>,
-) -> Result<Vec<DailyStats>, DbErr> {
-    let mut query = TestResults::find();
-
-    if let Some(from) = date_from {
-        query = query.filter(test_results::Column::Date.gte(from));
-    }
-
-    if let Some(to) = date_to {
-        query = query.filter(test_results::Column::Date.lte(to));
-    }
-
-    let mut query = query
-        .select_only()
-        .column_as(test_results::Column::Date, "date")
-        .column_as(test_results::Column::Id.count(), "total_tests")
-        .column_as(
-            Expr::case(
-                Expr::col(test_results::Column::PassFail).eq("Pass"),
-                1,
-            )
-            .finally(0)
-            .sum(),
-            "passed",
-        )
-        .column_as(
-            Expr::case(
-                Expr::col(test_results::Column::PassFail).ne("Pass"),
-                1,
-            )
-            .finally(0)
-            .sum(),
-            "failed",
-        )
-        .column_as(
-            Expr::cust_with_values(
-                "CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL)",
-                []
-            ),
-            "pass_rate",
-        )
-        .column_as(test_results::Column::Part.count_distinct(), "parts_tested")
-        .column_as(test_results::Column::Batch.count_distinct(), "batches_tested")
-        .group_by(test_results::Column::Date)
-        .order_by_desc(test_results::Column::Date);
-
-    if let Some(lim) = limit {
-        query = query.limit(lim);
-    }
-
-    let results = query.into_model::<DailyStats>().all(db).await?;
-
-    Ok(results)
+    pub total_parts: i64,
+    pub total_batches: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
@@ -137,181 +24,205 @@ pub struct OperatorStats {
     pub batches_completed: i64,
 }
 
-/// Get statistics by operator
+#[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
+pub struct OverallStats {
+    pub total_tests: i64,
+    pub total_parts: i64,
+    pub total_batches: i64,
+    pub total_operators: i64,
+    pub passed: i64,
+    pub failed: i64,
+    pub pass_rate: f64,
+}
+
+/// Get daily statistics
+pub async fn get_daily_stats(
+    db: &DatabaseConnection,
+    date_from: Option<&str>,
+    date_to: Option<&str>,
+) -> Result<Vec<DailyStats>, DbErr> {
+    let mut conditions = Vec::new();
+    let mut params: Vec<Value> = Vec::new();
+
+    if let Some(from) = date_from {
+        conditions.push("date >= ?");
+        params.push(from.into());
+    }
+
+    if let Some(to) = date_to {
+        conditions.push("date <= ?");
+        params.push(to.into());
+    }
+
+    let where_clause = if conditions.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", conditions.join(" AND "))
+    };
+
+    let sql = format!(
+        r#"
+        SELECT 
+            date,
+            COUNT(*) as total_tests,
+            SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END) as passed,
+            SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END) as failed,
+            CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate,
+            COUNT(DISTINCT part) as total_parts,
+            COUNT(DISTINCT batch) as total_batches
+        FROM test_results
+        {}
+        GROUP BY date
+        ORDER BY date DESC
+        "#,
+        where_clause
+    );
+
+    let results = DailyStats::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        &sql,
+        params,
+    ))
+    .all(db)
+    .await?;
+
+    Ok(results)
+}
+
+/// Get operator statistics
 pub async fn get_operator_stats(
     db: &DatabaseConnection,
     date_from: Option<&str>,
     date_to: Option<&str>,
 ) -> Result<Vec<OperatorStats>, DbErr> {
-    let mut query = TestResults::find();
+    let mut conditions = Vec::new();
+    let mut params: Vec<Value> = Vec::new();
 
     if let Some(from) = date_from {
-        query = query.filter(test_results::Column::Date.gte(from));
+        conditions.push("date >= ?");
+        params.push(from.into());
     }
 
     if let Some(to) = date_to {
-        query = query.filter(test_results::Column::Date.lte(to));
+        conditions.push("date <= ?");
+        params.push(to.into());
     }
 
-    let results = query
-        .select_only()
-        .column_as(test_results::Column::Operator, "operator")
-        .column_as(test_results::Column::Id.count(), "total_tests")
-        .column_as(
-            Expr::case(
-                Expr::col(test_results::Column::PassFail).eq("Pass"),
-                1,
-            )
-            .finally(0)
-            .sum(),
-            "passed",
-        )
-        .column_as(
-            Expr::case(
-                Expr::col(test_results::Column::PassFail).ne("Pass"),
-                1,
-            )
-            .finally(0)
-            .sum(),
-            "failed",
-        )
-        .column_as(
-            Expr::cust_with_values(
-                "CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL)",
-                []
-            ),
-            "pass_rate",
-        )
-        .column_as(test_results::Column::Part.count_distinct(), "parts_tested")
-        .column_as(test_results::Column::Batch.count_distinct(), "batches_completed")
-        .group_by(test_results::Column::Operator)
-        .order_by_desc(test_results::Column::Id.count())
-        .into_model::<OperatorStats>()
-        .all(db)
-        .await?;
+    let where_clause = if conditions.is_empty() {
+        String::new()
+    } else {
+        format!("WHERE {}", conditions.join(" AND "))
+    };
+
+    let sql = format!(
+        r#"
+        SELECT 
+            operator,
+            COUNT(*) as total_tests,
+            SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END) as passed,
+            SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END) as failed,
+            CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate,
+            COUNT(DISTINCT part) as parts_tested,
+            COUNT(DISTINCT batch) as batches_completed
+        FROM test_results
+        {}
+        GROUP BY operator
+        ORDER BY total_tests DESC
+        "#,
+        where_clause
+    );
+
+    let results = OperatorStats::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        &sql,
+        params,
+    ))
+    .all(db)
+    .await?;
 
     Ok(results)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
-pub struct TopFailedPart {
-    pub part: String,
-    pub total_failures: i64,
-    pub total_tests: i64,
-    pub failure_rate: f64,
-}
-
-/// Get parts with most failures
-pub async fn get_top_failed_parts(
+/// Get overall statistics
+pub async fn get_overall_stats(
     db: &DatabaseConnection,
-    limit: Option<u64>,
-) -> Result<Vec<TopFailedPart>, DbErr> {
-    let limit = limit.unwrap_or(10);
+) -> Result<Option<OverallStats>, DbErr> {
+    let sql = r#"
+        SELECT 
+            COUNT(*) as total_tests,
+            COUNT(DISTINCT part) as total_parts,
+            COUNT(DISTINCT batch) as total_batches,
+            COUNT(DISTINCT operator) as total_operators,
+            SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END) as passed,
+            SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END) as failed,
+            CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate
+        FROM test_results
+    "#;
 
-    let results = TestResults::find()
-        .select_only()
-        .column_as(test_results::Column::Part, "part")
-        .column_as(
-            Expr::case(
-                Expr::col(test_results::Column::PassFail).ne("Pass"),
-                1,
-            )
-            .finally(0)
-            .sum(),
-            "total_failures",
-        )
-        .column_as(test_results::Column::Id.count(), "total_tests")
-        .column_as(
-            Expr::cust_with_values(
-                "CAST(SUM(CASE WHEN pass_fail != 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL)",
-                []
-            ),
-            "failure_rate",
-        )
-        .group_by(test_results::Column::Part)
-        .having(
-            Expr::case(
-                Expr::col(test_results::Column::PassFail).ne("Pass"),
-                1,
-            )
-            .finally(0)
-            .sum()
-            .gt(0),
-        )
-        .order_by_desc(
-            Expr::case(
-                Expr::col(test_results::Column::PassFail).ne("Pass"),
-                1,
-            )
-            .finally(0)
-            .sum(),
-        )
-        .limit(limit)
-        .into_model::<TopFailedPart>()
-        .all(db)
-        .await?;
+    let result = OverallStats::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        sql,
+        [],
+    ))
+    .one(db)
+    .await?;
 
-    Ok(results)
+    Ok(result)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
-pub struct RecentActivity {
-    pub date: String,
-    pub part: String,
-    pub batch: String,
-    pub operator: String,
-    pub tests_run: i64,
-    pub created_at: chrono::NaiveDateTime,
-}
-
-/// Get most recent testing activity
-pub async fn get_recent_activity(
+/// Get statistics for a specific part
+pub async fn get_part_stats(
     db: &DatabaseConnection,
-    limit: Option<u64>,
-) -> Result<Vec<RecentActivity>, DbErr> {
-    let limit = limit.unwrap_or(20);
+    part: &str,
+) -> Result<Option<OverallStats>, DbErr> {
+    let sql = r#"
+        SELECT 
+            COUNT(*) as total_tests,
+            1 as total_parts,
+            COUNT(DISTINCT batch) as total_batches,
+            COUNT(DISTINCT operator) as total_operators,
+            SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END) as passed,
+            SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END) as failed,
+            CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate
+        FROM test_results
+        WHERE part = ?
+    "#;
 
-    let results = TestResults::find()
-        .select_only()
-        .column_as(test_results::Column::Date, "date")
-        .column_as(test_results::Column::Part, "part")
-        .column_as(test_results::Column::Batch, "batch")
-        .column_as(test_results::Column::Operator, "operator")
-        .column_as(test_results::Column::Id.count(), "tests_run")
-        .column_as(test_results::Column::CreatedAt.max(), "created_at")
-        .group_by(test_results::Column::Batch)
-        .group_by(test_results::Column::Date)
-        .group_by(test_results::Column::Part)
-        .group_by(test_results::Column::Operator)
-        .order_by_desc(Expr::col((test_results::Entity, test_results::Column::CreatedAt)).max())
-        .limit(limit)
-        .into_model::<RecentActivity>()
-        .all(db)
-        .await?;
+    let result = OverallStats::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        sql,
+        [part.into()],
+    ))
+    .one(db)
+    .await?;
 
-    Ok(results)
+    Ok(result)
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TrendData {
-    pub daily_stats: Vec<DailyStats>,
-    pub pass_rate_trend: Vec<f64>,
-    pub volume_trend: Vec<i64>,
-}
-
-/// Get trend data for dashboard
-pub async fn get_trend_data(
+/// Get date range for available data
+pub async fn get_date_range(
     db: &DatabaseConnection,
-    days: u64,
-) -> Result<TrendData, DbErr> {
-    let daily = get_daily_stats(db, None, None, Some(days)).await?;
+) -> Result<Option<(String, String)>, DbErr> {
+    #[derive(Debug, FromQueryResult)]
+    struct DateRange {
+        min_date: String,
+        max_date: String,
+    }
 
-    let pass_rate_trend: Vec<f64> = daily.iter().map(|d| d.pass_rate).collect();
-    let volume_trend: Vec<i64> = daily.iter().map(|d| d.total_tests).collect();
+    let sql = r#"
+        SELECT 
+            MIN(date) as min_date,
+            MAX(date) as max_date
+        FROM test_results
+    "#;
 
-    Ok(TrendData {
-        daily_stats: daily,
-        pass_rate_trend,
-        volume_trend,
-    })
+    let result = DateRange::find_by_statement(Statement::from_sql_and_values(
+        DbBackend::Sqlite,
+        sql,
+        [],
+    ))
+    .one(db)
+    .await?;
+
+    Ok(result.map(|r| (r.min_date, r.max_date)))
 }

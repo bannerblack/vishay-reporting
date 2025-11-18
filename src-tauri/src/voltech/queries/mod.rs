@@ -1,7 +1,9 @@
-// Query modules for voltech data analysis
 pub mod batch_queries;
 pub mod part_queries;
 pub mod test_queries;
 pub mod stats_queries;
 
-// Re-export will be added once query modules are updated for SeaORM 2.0
+pub use batch_queries::*;
+pub use part_queries::*;
+pub use test_queries::*;
+pub use stats_queries::*;
