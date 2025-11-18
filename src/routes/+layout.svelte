@@ -5,6 +5,8 @@
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 	import { createUserContext, setUserContext } from '$lib/context/user-context.svelte';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
@@ -18,6 +20,26 @@
 	// Initialize authentication on mount
 	onMount(async () => {
 		await userContext.refresh();
+		console.log('Auth state after refresh:', {
+			isLoading: userContext.isLoading,
+			isInitialSetup: userContext.isInitialSetup,
+			isAuthenticated: userContext.isAuthenticated,
+			user: userContext.user
+		});
+
+		// Redirect to setup if needed and not already there
+		if (userContext.isInitialSetup && !window.location.pathname.includes('/setup')) {
+			goto('/setup');
+		}
+	});
+
+	// Debug reactive values
+	$effect(() => {
+		console.log('Layout reactive check:', {
+			isLoading: userContext.isLoading,
+			isInitialSetup: userContext.isInitialSetup,
+			isAuthenticated: userContext.isAuthenticated
+		});
 	});
 </script>
 

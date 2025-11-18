@@ -48,17 +48,21 @@ class UserContextImpl {
 		try {
 			// Check if initial setup is needed
 			const needsSetup = await needsInitialSetup();
+			console.log('needsInitialSetup returned:', needsSetup);
 			this.isInitialSetup = needsSetup;
 
 			if (needsSetup) {
 				this.user = null;
+				console.log('Initial setup required - no users in database');
 				return;
 			}
 
 			// Try to authenticate
 			try {
 				this.user = await authenticateUser();
+				console.log('User authenticated successfully:', this.user);
 			} catch (error) {
+				console.error('Authentication error:', error);
 				const errorMsg = String(error);
 				if (errorMsg.includes('INITIAL_SETUP')) {
 					this.isInitialSetup = true;

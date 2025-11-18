@@ -13,8 +13,9 @@ use tauri::Manager;
 use migration::{DbErr as CoreDbErr, Migrator as CoreMigrator, MigratorTrait as CoreMigratorTrait};
 // use migration_event::{DbErr as EventDbErr, Migrator as EventMigrator, MigratorTrait as EventMigratorTrait};
 use migration_voltech::{DbErr as VoltechDbErr, Migrator as VoltechMigrator, MigratorTrait as VoltechMigratorTrait};
-use sea_orm::{Database, DbConn};
+use sea_orm::{Database, DbConn, ConnectOptions};
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 // State management for database connections
 // pub struct AppState {
@@ -26,6 +27,8 @@ use std::sync::Arc;
 pub struct AppState {
     pub core_db: Arc<DbConn>,
     pub voltech_db: Arc<DbConn>,
+    pub voltech_watcher_state: Arc<Mutex<voltech::WatcherState>>,
+    pub instance_id: String,
 }
 
 pub async fn establish_core_connection() -> Result<DbConn, CoreDbErr> {
@@ -90,7 +93,10 @@ pub async fn establish_voltech_connection() -> Result<DbConn, VoltechDbErr> {
             format!("sqlite:///C:/Users/bashleigh/Desktop/ProductionProjects/REMOTE/voltech.sqlite?mode=rwc")
         });
     
-    let db = Database::connect(&database_url)
+    let mut opt = ConnectOptions::new(database_url);
+    opt.max_connections(20).min_connections(5);
+    
+    let db = Database::connect(opt)
         .await
         .expect("Failed to setup the voltech database");
     VoltechMigrator::up(&db, None)
@@ -165,7 +171,55 @@ pub fn run() {
             joins::get_all_reports_with_fg,
             joins::get_all_tests_by_fg,
             joins::get_all_tests_by_report,
-            joins::get_available_tests_for_report
+            joins::get_available_tests_for_report,
+            
+            // Voltech File Processing
+            voltech::start_voltech_watcher,
+            voltech::stop_voltech_watcher,
+            voltech::pause_voltech_watcher,
+            voltech::resume_voltech_watcher,
+            voltech::get_voltech_watcher_status,
+            voltech::import_voltech_files,
+            voltech::force_acquire_voltech_master,
+            
+            // Voltech Settings
+            voltech::get_voltech_settings,
+            voltech::set_voltech_setting,
+            voltech::get_all_voltech_settings,
+            voltech::delete_voltech_setting,
+            
+            // Voltech Errors
+            voltech::get_voltech_errors,
+            voltech::acknowledge_voltech_errors,
+            voltech::acknowledge_file_errors,
+            voltech::cleanup_old_voltech_errors,
+            
+            // Voltech Lock Management
+            voltech::get_voltech_lock_status,
+            voltech::force_release_voltech_lock,
+            
+            // Voltech Queries - Batch
+            voltech::get_recent_batches_for_part,
+            voltech::get_batch_details,
+            voltech::search_batches,
+            voltech::get_batch_tests,
+            voltech::get_batches_for_part,
+            
+            // Voltech Queries - Part
+            voltech::get_all_parts,
+            voltech::get_part_summary,
+            voltech::search_parts,
+            
+            // Voltech Queries - Test
+            voltech::search_tests,
+            voltech::get_failed_tests,
+            voltech::get_test_by_serial,
+            
+            // Voltech Queries - Stats
+            voltech::get_daily_stats,
+            voltech::get_operator_stats,
+            voltech::get_overall_stats,
+            voltech::get_part_stats
             ])
         .setup(|app| {
             if cfg!(debug_assertions) {
@@ -181,10 +235,18 @@ pub fn run() {
             let core_db = runtime.block_on(establish_core_connection()).unwrap();
             let voltech_db = runtime.block_on(establish_voltech_connection()).unwrap();
             
+            // Generate unique instance ID for this app instance
+            let instance_id = uuid::Uuid::new_v4().to_string();
+            
+            // Initialize watcher state
+            let watcher_state = Arc::new(Mutex::new(voltech::WatcherState::new(instance_id.clone())));
+            
             // Store connections in app state
             app.manage(AppState {
                 core_db: Arc::new(core_db),
                 voltech_db: Arc::new(voltech_db),
+                voltech_watcher_state: watcher_state,
+                instance_id,
             });
             
             Ok(())

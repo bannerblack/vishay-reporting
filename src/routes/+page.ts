@@ -7,16 +7,27 @@ import { invoke } from '@tauri-apps/api/core';
 import type { winUser } from '../types/types';
 import { _userSchema } from '../types/types';
 
-export const load = async ({ fetch }) => {
-	//   const id = parseInt(params.id);
-	const user: winUser = await invoke('get_system_user');
-	const permissions: string[] = await invoke('get_user_roles');
+export const load = async () => {
+	try {
+		//   const id = parseInt(params.id);
+		const user: winUser = await invoke('get_system_user');
+		const permissions: string[] = await invoke('get_user_roles');
 
-	const request = await fetch(`https://jsonplaceholder.typicode.com/users/1`);
-	if (request.status >= 400) throw error(request.status);
+		const request = await fetch(`https://jsonplaceholder.typicode.com/users/1`);
+		if (request.status >= 400) throw error(request.status);
 
-	const userData = await request.json();
-	const form = await superValidate(userData, zod4(_userSchema));
+		const userData = await request.json();
+		const form = await superValidate(userData, zod4(_userSchema));
 
-	return { user, form, permissions };
+		return { user, form, permissions };
+	} catch (err) {
+		console.error('Error loading page data:', err);
+		// Return empty/default data if there's an error (e.g., during initial setup)
+		const form = await superValidate({}, zod4(_userSchema));
+		return { 
+			user: ['', ''] as winUser, 
+			form, 
+			permissions: [] as string[] 
+		};
+	}
 };
