@@ -4,16 +4,39 @@ use sea_orm::{entity::*, query::*, DbConn, DbErr, Set, ActiveValue::NotSet};
 use sea_orm::sea_query::{OnConflict, Expr};
 use chrono::Utc;
 use uuid::Uuid;
+use std::path::Path;
+
+// ==================== Path Utilities ====================
+
+/// Extract relative path from full path by stripping server_path prefix
+/// Example: strip_server_prefix("\\server\share\Results1\C0.atr", "\\server\share") => "Results1\C0.atr"
+fn strip_server_prefix(full_path: &str, server_path: &str) -> String {
+    let normalized_full = full_path.replace('/', "\\");
+    let normalized_server = server_path.replace('/', "\\").trim_end_matches('\\').to_string();
+    
+    if let Some(relative) = normalized_full.strip_prefix(&normalized_server) {
+        relative.trim_start_matches('\\').to_string()
+    } else {
+        // Fallback: try to extract from path
+        Path::new(&normalized_full)
+            .file_name()
+            .and_then(|f| f.to_str())
+            .unwrap_or(&normalized_full)
+            .to_string()
+    }
+}
 
 // ==================== File Processing Tracking ====================
 
 /// Check if a file needs processing based on size/modified time
+/// First checks by relative_path (portable), falls back to file_path (legacy)
 pub async fn needs_processing(
     db: &DbConn,
     file_path: &str,
     file_size: i32,
     file_modified: i32,
 ) -> Result<bool, DbErr> {
+    // Try to find by exact file_path first (legacy mode)
     let existing = processed_files::Entity::find()
         .filter(processed_files::Column::FilePath.eq(file_path))
         .one(db)
@@ -22,6 +45,27 @@ pub async fn needs_processing(
     match existing {
         Some(record) => {
             // Check if file has changed (compare timestamps as i32)
+            Ok(record.file_size != file_size || record.file_modified.timestamp() as i32 != file_modified)
+        }
+        None => Ok(true), // New file, needs processing
+    }
+}
+
+/// Check if a file needs processing using relative path (portable mode)
+pub async fn needs_processing_relative(
+    db: &DbConn,
+    relative_path: &str,
+    file_size: i32,
+    file_modified: i32,
+) -> Result<bool, DbErr> {
+    let existing = processed_files::Entity::find()
+        .filter(processed_files::Column::RelativePath.eq(relative_path))
+        .one(db)
+        .await?;
+
+    match existing {
+        Some(record) => {
+            // Check if file has changed
             Ok(record.file_size != file_size || record.file_modified.timestamp() as i32 != file_modified)
         }
         None => Ok(true), // New file, needs processing
@@ -48,6 +92,7 @@ pub async fn mark_file_processed(
         file_modified: Set(file_modified_dt),
         record_count: Set(record_count),
         processed_at: Set(now.with_timezone(&chrono::FixedOffset::east_opt(0).unwrap())),
+        relative_path: NotSet,
     };
 
     // Insert or replace
@@ -59,6 +104,49 @@ pub async fn mark_file_processed(
                     processed_files::Column::FileModified,
                     processed_files::Column::RecordCount,
                     processed_files::Column::ProcessedAt,
+                ])
+                .to_owned()
+        )
+        .exec(db)
+        .await?;
+
+    Ok(())
+}
+
+/// Mark a file as processed with relative path (portable mode)
+pub async fn mark_file_processed_relative(
+    db: &DbConn,
+    file_path: &str,
+    relative_path: &str,
+    file_size: i32,
+    file_modified: i32,
+    record_count: i32,
+) -> Result<(), DbErr> {
+    let now = Utc::now();
+    let file_modified_dt = chrono::DateTime::from_timestamp(file_modified as i64, 0)
+        .unwrap_or(now)
+        .with_timezone(&chrono::FixedOffset::east_opt(0).unwrap());
+    
+    let model = processed_files::ActiveModel {
+        id: NotSet,
+        file_path: Set(file_path.to_string()),
+        file_size: Set(file_size),
+        file_modified: Set(file_modified_dt),
+        record_count: Set(record_count),
+        processed_at: Set(now.with_timezone(&chrono::FixedOffset::east_opt(0).unwrap())),
+        relative_path: Set(Some(relative_path.to_string())),
+    };
+
+    // Insert or replace on relative_path if it exists
+    processed_files::Entity::insert(model)
+        .on_conflict(
+            OnConflict::column(processed_files::Column::FilePath)
+                .update_columns([
+                    processed_files::Column::FileSize,
+                    processed_files::Column::FileModified,
+                    processed_files::Column::RecordCount,
+                    processed_files::Column::ProcessedAt,
+                    processed_files::Column::RelativePath,
                 ])
                 .to_owned()
         )
@@ -118,8 +206,8 @@ pub async fn get_all_settings(db: &DbConn) -> Result<Vec<settings::Model>, DbErr
 
 /// Delete a setting
 pub async fn delete_setting(db: &DbConn, key: &str) -> Result<(), DbErr> {
-    settings::Entity::delete_many()
-        .filter(settings::Column::Key.eq(key))
+    // Use delete_by_id since key is the primary key
+    settings::Entity::delete_by_id(key.to_string())
         .exec(db)
         .await?;
 

@@ -1,6 +1,6 @@
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use entity_voltech::{test_results, prelude::*};
+use entity_voltech::test_results;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
 pub struct PartSummary {
@@ -39,7 +39,7 @@ pub async fn get_all_parts(
             CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate
         FROM test_results
         GROUP BY part
-        ORDER BY MAX(created_at) DESC
+        ORDER BY total_tests DESC
         LIMIT ?
     "#;
 

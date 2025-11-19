@@ -44,10 +44,10 @@ pub enum WatcherControl {
 // ==================== Event Payloads ====================
 
 #[derive(Debug, Clone, Serialize)]
-struct BatchProgressEvent {
-    files_processed: usize,
-    records_inserted: usize,
-    errors: Vec<String>,
+pub struct BatchProgressEvent {
+    pub files_processed: usize,
+    pub records_inserted: usize,
+    pub errors: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -68,40 +68,44 @@ fn is_voltech_file(filename: &str) -> bool {
     re.is_match(filename)
 }
 
-/// Get all Voltech files in directory
-async fn get_voltech_files(server_path: &str) -> Result<Vec<PathBuf>, String> {
+/// Get all Voltech files in directory (recursive)
+pub async fn get_all_voltech_files(server_path: &str) -> Result<Vec<PathBuf>, String> {
     let path = Path::new(server_path);
     if !path.exists() {
         return Err(format!("Server path does not exist: {}", server_path));
     }
 
     let mut files = Vec::new();
-    let mut entries = tokio::fs::read_dir(path)
-        .await
-        .map_err(|e| format!("Failed to read directory: {}", e))?;
-
-    while let Some(entry) = entries.next_entry()
-        .await
-        .map_err(|e| format!("Failed to read entry: {}", e))? 
-    {
-        if let Ok(file_type) = entry.file_type().await {
-            if file_type.is_file() {
-                if let Some(filename) = entry.file_name().to_str() {
-                    if is_voltech_file(filename) {
-                        files.push(entry.path());
+    
+    fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>, is_voltech_file: &dyn Fn(&str) -> bool) -> std::io::Result<()> {
+        if dir.is_dir() {
+            for entry in std::fs::read_dir(dir)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_dir() {
+                    visit_dirs(&path, files, is_voltech_file)?;
+                } else if let Some(filename) = path.file_name() {
+                    if let Some(name) = filename.to_str() {
+                        if is_voltech_file(name) {
+                            files.push(path);
+                        }
                     }
                 }
             }
         }
+        Ok(())
     }
-
+    
+    visit_dirs(path, &mut files, &is_voltech_file)
+        .map_err(|e| format!("Failed to scan directory: {}", e))?;
+    
     Ok(files)
 }
 
 /// Get files from last N days
 async fn get_recent_files(server_path: &str, days: i64) -> Result<Vec<PathBuf>, String> {
     let cutoff = Utc::now() - chrono::Duration::days(days);
-    let all_files = get_voltech_files(server_path).await?;
+    let all_files = get_all_voltech_files(server_path).await?;
     
     let mut recent = Vec::new();
     for file_path in all_files {
@@ -245,7 +249,7 @@ async fn watcher_loop(
                 }
 
                 // Process new files
-                match get_voltech_files(&server_path).await {
+                match get_all_voltech_files(&server_path).await {
                     Ok(files) => {
                         let mut files_to_process = Vec::new();
                         

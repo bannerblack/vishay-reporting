@@ -1,6 +1,6 @@
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use entity_voltech::{test_results, prelude::*};
+use entity_voltech::test_results;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
 pub struct DailyStats {
@@ -65,9 +65,9 @@ pub async fn get_daily_stats(
         SELECT 
             date,
             COUNT(*) as total_tests,
-            SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END) as passed,
-            SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END) as failed,
-            CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate,
+            COALESCE(SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END), 0) as passed,
+            COALESCE(SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END), 0) as failed,
+            COALESCE(CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / NULLIF(COUNT(*), 0) AS REAL), 0.0) as pass_rate,
             COUNT(DISTINCT part) as total_parts,
             COUNT(DISTINCT batch) as total_batches
         FROM test_results
@@ -119,9 +119,9 @@ pub async fn get_operator_stats(
         SELECT 
             operator,
             COUNT(*) as total_tests,
-            SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END) as passed,
-            SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END) as failed,
-            CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate,
+            COALESCE(SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END), 0) as passed,
+            COALESCE(SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END), 0) as failed,
+            COALESCE(CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / NULLIF(COUNT(*), 0) AS REAL), 0.0) as pass_rate,
             COUNT(DISTINCT part) as parts_tested,
             COUNT(DISTINCT batch) as batches_completed
         FROM test_results
@@ -153,9 +153,9 @@ pub async fn get_overall_stats(
             COUNT(DISTINCT part) as total_parts,
             COUNT(DISTINCT batch) as total_batches,
             COUNT(DISTINCT operator) as total_operators,
-            SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END) as passed,
-            SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END) as failed,
-            CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate
+            COALESCE(SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END), 0) as passed,
+            COALESCE(SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END), 0) as failed,
+            COALESCE(CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / NULLIF(COUNT(*), 0) AS REAL), 0.0) as pass_rate
         FROM test_results
     "#;
 
@@ -181,9 +181,9 @@ pub async fn get_part_stats(
             1 as total_parts,
             COUNT(DISTINCT batch) as total_batches,
             COUNT(DISTINCT operator) as total_operators,
-            SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END) as passed,
-            SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END) as failed,
-            CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate
+            COALESCE(SUM(CASE WHEN pass_fail = 'Pass' THEN 1 ELSE 0 END), 0) as passed,
+            COALESCE(SUM(CASE WHEN pass_fail != 'Pass' THEN 1 ELSE 0 END), 0) as failed,
+            COALESCE(CAST(SUM(CASE WHEN pass_fail = 'Pass' THEN 1.0 ELSE 0.0 END) * 100.0 / NULLIF(COUNT(*), 0) AS REAL), 0.0) as pass_rate
         FROM test_results
         WHERE part = ?
     "#;

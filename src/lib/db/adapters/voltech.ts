@@ -161,13 +161,19 @@ export interface WatcherProgress {
 	current_file: string;
 }
 
+export interface BatchProgress {
+	files_processed: number;
+	records_inserted: number;
+	errors: string[];
+}
+
 // ============================================================================
 // File Processing Commands
 // ============================================================================
 
-export async function startVoltechWatcher(username: string): Promise<WatcherStatus> {
+export async function startVoltechWatcher(): Promise<WatcherStatus> {
 	try {
-		return await invoke<WatcherStatus>('start_voltech_watcher', { username });
+		return await invoke<WatcherStatus>('start_voltech_watcher');
 	} catch (error) {
 		throw new Error(`Failed to start voltech watcher: ${error}`);
 	}
@@ -197,9 +203,9 @@ export async function resumeVoltechWatcher(): Promise<string> {
 	}
 }
 
-export async function getVoltechWatcherStatus(username: string): Promise<WatcherStatus> {
+export async function getVoltechWatcherStatus(): Promise<WatcherStatus> {
 	try {
-		return await invoke<WatcherStatus>('get_voltech_watcher_status', { username });
+		return await invoke<WatcherStatus>('get_voltech_watcher_status');
 	} catch (error) {
 		throw new Error(`Failed to get voltech watcher status: ${error}`);
 	}
@@ -217,9 +223,9 @@ export async function importVoltechFiles(
 	}
 }
 
-export async function forceAcquireVoltechMaster(username: string): Promise<WatcherStatus> {
+export async function forceAcquireVoltechMaster(): Promise<WatcherStatus> {
 	try {
-		return await invoke<WatcherStatus>('force_acquire_voltech_master', { username });
+		return await invoke<WatcherStatus>('force_acquire_voltech_master');
 	} catch (error) {
 		throw new Error(`Failed to force acquire voltech master: ${error}`);
 	}
@@ -251,14 +257,14 @@ export async function getVoltechSettings(): Promise<VoltechSettingsResponse> {
 	}
 }
 
-export async function updateVoltechSettings(
-	username: string,
-	settings: VoltechSettings
+export async function setVoltechSetting(
+	key: string,
+	value: string
 ): Promise<string> {
 	try {
-		return await invoke<string>('update_voltech_settings', { username, settings });
+		return await invoke<string>('set_voltech_setting', { key, value });
 	} catch (error) {
-		throw new Error(`Failed to update voltech settings: ${error}`);
+		throw new Error(`Failed to set voltech setting: ${error}`);
 	}
 }
 
@@ -270,9 +276,9 @@ export async function getAllVoltechSettings(): Promise<Record<string, string>> {
 	}
 }
 
-export async function deleteVoltechSetting(username: string, key: string): Promise<string> {
+export async function deleteVoltechSetting(key: string): Promise<string> {
 	try {
-		return await invoke<string>('delete_voltech_setting', { username, key });
+		return await invoke<string>('delete_voltech_setting', { key });
 	} catch (error) {
 		throw new Error(`Failed to delete voltech setting: ${error}`);
 	}
@@ -326,9 +332,9 @@ export async function getVoltechLockStatus(): Promise<string | null> {
 	}
 }
 
-export async function forceReleaseVoltechLock(username: string): Promise<string> {
+export async function forceReleaseVoltechLock(): Promise<string> {
 	try {
-		return await invoke<string>('force_release_voltech_lock', { username });
+		return await invoke<string>('force_release_voltech_lock');
 	} catch (error) {
 		throw new Error(`Failed to force release voltech lock: ${error}`);
 	}
@@ -457,7 +463,9 @@ export async function getFailedTests(limit?: number): Promise<TestResult[]> {
 	try {
 		return await invoke<TestResult[]>('get_failed_tests', { limit });
 	} catch (error) {
-		throw new Error(`Failed to get failed tests: ${error}`);
+		// Return empty array if database is empty or query fails
+		console.warn('Failed to get failed tests:', error);
+		return [];
 	}
 }
 
@@ -518,9 +526,32 @@ export async function getOperatorStats(
 
 export async function getOverallStats(): Promise<OverallStats | null> {
 	try {
-		return await invoke<OverallStats | null>('get_overall_stats');
+		const stats = await invoke<OverallStats | null>('get_overall_stats');
+		// Handle case where database is empty
+		if (!stats) {
+			return {
+				total_tests: 0,
+				total_parts: 0,
+				total_batches: 0,
+				total_operators: 0,
+				passed: 0,
+				failed: 0,
+				pass_rate: 0
+			};
+		}
+		return stats;
 	} catch (error) {
-		throw new Error(`Failed to get overall stats: ${error}`);
+		// Return empty stats on error instead of throwing
+		console.warn('Failed to get overall stats:', error);
+		return {
+			total_tests: 0,
+			total_parts: 0,
+			total_batches: 0,
+			total_operators: 0,
+			passed: 0,
+			failed: 0,
+			pass_rate: 0
+		};
 	}
 }
 
@@ -537,6 +568,40 @@ export async function getDateRange(): Promise<[string, string] | null> {
 		return await invoke<[string, string] | null>('get_date_range');
 	} catch (error) {
 		throw new Error(`Failed to get date range: ${error}`);
+	}
+}
+
+// ============================================================================
+// Full Import Commands
+// ============================================================================
+
+export async function resetVoltechDatabase(): Promise<string> {
+	try {
+		return await invoke<string>('reset_voltech_database');
+	} catch (error) {
+		throw new Error(`Failed to reset voltech database: ${error}`);
+	}
+}
+
+export async function fullImportVoltechFiles(
+	serverPath: string,
+	dbPath?: string
+): Promise<string> {
+	try {
+		return await invoke<string>('full_import_voltech_files', {
+			serverPath,
+			dbPath: dbPath || null
+		});
+	} catch (error) {
+		throw new Error(`Failed to import voltech files: ${error}`);
+	}
+}
+
+export async function updateServerPathSetting(newPath: string): Promise<string> {
+	try {
+		return await invoke<string>('update_server_path_setting', { newPath });
+	} catch (error) {
+		throw new Error(`Failed to update server path: ${error}`);
 	}
 }
 
@@ -559,9 +624,9 @@ export async function onVoltechWatcherResumed(callback: () => void): Promise<Unl
 }
 
 export async function onVoltechBatchProgress(
-	callback: (progress: WatcherProgress) => void
+	callback: (progress: BatchProgress) => void
 ): Promise<UnlistenFn> {
-	return await listen<WatcherProgress>('voltech-batch-progress', (event) => {
+	return await listen<BatchProgress>('voltech-batch-progress', (event) => {
 		callback(event.payload);
 	});
 }

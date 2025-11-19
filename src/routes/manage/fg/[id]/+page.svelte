@@ -130,7 +130,7 @@
 							</Table.Cell>
 						</Table.Row>
 					{:else}
-						{#each tests as test (test.id)}
+						{#each tests as test, index (test.id + '-' + index)}
 							<Table.Row>
 								<Table.Cell class="font-medium">{test.test_type}</Table.Cell>
 								<Table.Cell>{test.frequency ?? '-'}</Table.Cell>

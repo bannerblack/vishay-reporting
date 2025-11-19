@@ -219,7 +219,12 @@ pub fn run() {
             voltech::get_daily_stats,
             voltech::get_operator_stats,
             voltech::get_overall_stats,
-            voltech::get_part_stats
+            voltech::get_part_stats,
+            
+            // Voltech Full Import
+            voltech::reset_voltech_database,
+            voltech::full_import_voltech_files,
+            voltech::update_server_path_setting
             ])
         .setup(|app| {
             if cfg!(debug_assertions) {

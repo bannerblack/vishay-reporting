@@ -120,7 +120,7 @@ pub async fn get_batches_for_part(
         SELECT DISTINCT batch
         FROM test_results
         WHERE part = ?
-        ORDER BY MAX(created_at) DESC
+        ORDER BY batch DESC
     "#;
 
     let results = BatchResult::find_by_statement(Statement::from_sql_and_values(

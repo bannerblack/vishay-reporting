@@ -1,12 +1,3 @@
-<script lang="ts" module>
-	import PackageIcon from "@lucide/svelte/icons/package";
-	import FileTextIcon from "@lucide/svelte/icons/file-text";
-	import BeakerIcon from "@lucide/svelte/icons/beaker";
-	import LockIcon from "@lucide/svelte/icons/lock";
-	import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
-	import Settings2Icon from "@lucide/svelte/icons/settings-2";
-</script>
-
 <script lang="ts">
 	import NavMain from "./nav-main.svelte";
 	import NavProjects from "./nav-projects.svelte";
@@ -14,6 +5,14 @@
 	import NavUser from "./nav-user.svelte";
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 	import CommandIcon from "@lucide/svelte/icons/command";
+	import PackageIcon from "@lucide/svelte/icons/package";
+	import FileTextIcon from "@lucide/svelte/icons/file-text";
+	import BeakerIcon from "@lucide/svelte/icons/beaker";
+	import LockIcon from "@lucide/svelte/icons/lock";
+	import ArrowLeftIcon from "@lucide/svelte/icons/arrow-left";
+	import Settings2Icon from "@lucide/svelte/icons/settings-2";
+	import DatabaseIcon from "@lucide/svelte/icons/database";
+	import BarChart3Icon from "@lucide/svelte/icons/bar-chart-3";
 	import type { ComponentProps } from "svelte";
 	import { getUserContext } from '$lib/context/user-context.svelte';
 
@@ -50,6 +49,28 @@
 				}] : []),
 			],
 		}] : []),
+		{
+			title: "Voltech",
+			url: "/voltech/parts",
+			icon: DatabaseIcon,
+			items: [
+				{
+					title: "Parts",
+					url: "/voltech/parts",
+				},
+				{
+					title: "Statistics",
+					url: "/voltech/stats",
+				},
+				...(canAccessManage ? [{
+					title: "Management",
+					url: "/manage/voltech",
+				}, {
+					title: "Full Import",
+					url: "/manage/voltech/import",
+				}] : []),
+			],
+		},
 		{
 			title: "Reports",
 			url: "/report",
@@ -107,7 +128,7 @@
 	const userData = $derived({
 		name: userContext.user?.name || "Guest",
 		email: `@${userContext.user?.username || "guest"}`,
-		avatar: "/avatars/user.jpg",
+		avatar: "",
 	});
 </script>
 
