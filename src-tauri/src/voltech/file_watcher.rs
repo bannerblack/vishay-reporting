@@ -1,14 +1,14 @@
 // File watcher for Voltech .atr files with master/follower coordination
-use sea_orm::DatabaseConnection;
-use std::sync::Arc;
-use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime};
-use tokio::sync::mpsc;
-use tokio::time::{sleep, interval};
-use tauri::{AppHandle, Emitter};
-use serde::Serialize;
 use chrono::Utc;
 use regex::Regex;
+use sea_orm::DatabaseConnection;
+use serde::Serialize;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
+use tauri::{AppHandle, Emitter};
+use tokio::sync::mpsc;
+use tokio::time::{interval, sleep};
 
 use crate::voltech::operations;
 use crate::voltech::parser;
@@ -76,8 +76,12 @@ pub async fn get_all_voltech_files(server_path: &str) -> Result<Vec<PathBuf>, St
     }
 
     let mut files = Vec::new();
-    
-    fn visit_dirs(dir: &Path, files: &mut Vec<PathBuf>, is_voltech_file: &dyn Fn(&str) -> bool) -> std::io::Result<()> {
+
+    fn visit_dirs(
+        dir: &Path,
+        files: &mut Vec<PathBuf>,
+        is_voltech_file: &dyn Fn(&str) -> bool,
+    ) -> std::io::Result<()> {
         if dir.is_dir() {
             for entry in std::fs::read_dir(dir)? {
                 let entry = entry?;
@@ -95,10 +99,10 @@ pub async fn get_all_voltech_files(server_path: &str) -> Result<Vec<PathBuf>, St
         }
         Ok(())
     }
-    
+
     visit_dirs(path, &mut files, &is_voltech_file)
         .map_err(|e| format!("Failed to scan directory: {}", e))?;
-    
+
     Ok(files)
 }
 
@@ -106,7 +110,7 @@ pub async fn get_all_voltech_files(server_path: &str) -> Result<Vec<PathBuf>, St
 async fn get_recent_files(server_path: &str, days: i64) -> Result<Vec<PathBuf>, String> {
     let cutoff = Utc::now() - chrono::Duration::days(days);
     let all_files = get_all_voltech_files(server_path).await?;
-    
+
     let mut recent = Vec::new();
     for file_path in all_files {
         if let Ok(metadata) = tokio::fs::metadata(&file_path).await {
@@ -114,7 +118,7 @@ async fn get_recent_files(server_path: &str, days: i64) -> Result<Vec<PathBuf>, 
                 if let Ok(duration) = modified.duration_since(SystemTime::UNIX_EPOCH) {
                     let file_time = chrono::DateTime::from_timestamp(duration.as_secs() as i64, 0)
                         .unwrap_or_else(|| Utc::now());
-                    
+
                     if file_time.timestamp() >= cutoff.timestamp() {
                         recent.push(file_path);
                     }
@@ -135,14 +139,14 @@ async fn process_file_with_retry(
     max_retries: u32,
 ) -> Result<usize, String> {
     let delays = [5, 15, 30]; // Immediate retry delays in seconds
-    
+
     for attempt in 0..=max_retries {
         match parser::parse_and_insert_file(db, file_path.to_str().unwrap()).await {
             Ok(count) => return Ok(count),
             Err(e) => {
                 let error_msg = format!("Attempt {} failed: {}", attempt + 1, e);
                 eprintln!("{}", error_msg);
-                
+
                 if attempt < max_retries {
                     let delay = if attempt < delays.len() as u32 {
                         delays[attempt as usize]
@@ -156,8 +160,10 @@ async fn process_file_with_retry(
                         db,
                         file_path.to_str().unwrap(),
                         &e.to_string(),
-                        None
-                    ).await {
+                        None,
+                    )
+                    .await
+                    {
                         eprintln!("Failed to log error: {}", log_err);
                     }
                     return Err(error_msg);
@@ -180,7 +186,7 @@ async fn watcher_loop(
     mut control_rx: mpsc::UnboundedReceiver<WatcherControl>,
 ) {
     println!("Voltech watcher started: instance_id={}", instance_id);
-    
+
     let mut is_paused = false;
     let mut heartbeat_interval = interval(Duration::from_secs(30));
     let mut poll_interval = interval(Duration::from_secs(10));
@@ -214,7 +220,7 @@ async fn watcher_loop(
                     }
                 }
             }
-            
+
             // Update heartbeat every 30 seconds
             _ = heartbeat_interval.tick() => {
                 if !is_paused {
@@ -223,7 +229,7 @@ async fn watcher_loop(
                     }
                 }
             }
-            
+
             // Poll for new files every 10 seconds
             _ = poll_interval.tick() => {
                 if is_paused {
@@ -252,7 +258,7 @@ async fn watcher_loop(
                 match get_all_voltech_files(&server_path).await {
                     Ok(files) => {
                         let mut files_to_process = Vec::new();
-                        
+
                         for file_path in files {
                             // Check if file needs processing
                             if let Ok(metadata) = tokio::fs::metadata(&file_path).await {
@@ -260,7 +266,7 @@ async fn watcher_loop(
                                 if let Ok(modified) = metadata.modified() {
                                     if let Ok(duration) = modified.duration_since(SystemTime::UNIX_EPOCH) {
                                         let file_modified = duration.as_secs() as i32;
-                                        
+
                                         match operations::needs_processing(
                                             &db,
                                             file_path.to_str().unwrap(),
@@ -353,7 +359,7 @@ pub async fn run_maintenance_scan(
     server_path: &str,
 ) -> Result<(), String> {
     println!("Starting 30-day maintenance scan...");
-    
+
     let files = get_recent_files(server_path, 30).await?;
     println!("Found {} files to scan", files.len());
 
@@ -364,15 +370,17 @@ pub async fn run_maintenance_scan(
             if let Ok(modified) = metadata.modified() {
                 if let Ok(duration) = modified.duration_since(SystemTime::UNIX_EPOCH) {
                     let file_modified = duration.as_secs() as i32;
-                    
+
                     match operations::needs_processing(
                         db,
                         file_path.to_str().unwrap(),
                         file_size,
-                        file_modified
-                    ).await {
+                        file_modified,
+                    )
+                    .await
+                    {
                         Ok(true) => files_to_process.push(file_path.to_str().unwrap().to_string()),
-                        Ok(false) => {},
+                        Ok(false) => {}
                         Err(e) => eprintln!("Error checking file: {}", e),
                     }
                 }
@@ -381,21 +389,30 @@ pub async fn run_maintenance_scan(
     }
 
     if !files_to_process.is_empty() {
-        println!("Processing {} files in maintenance scan", files_to_process.len());
-        
+        println!(
+            "Processing {} files in maintenance scan",
+            files_to_process.len()
+        );
+
         match parser::process_files_batch(db, &files_to_process, 3).await {
             Ok((files_count, records_count, errors)) => {
-                println!("Maintenance scan complete: {} files, {} records", files_count, records_count);
-                
-                let _ = app.emit("voltech-batch-progress", BatchProgressEvent {
-                    files_processed: files_count,
-                    records_inserted: records_count,
-                    errors,
-                });
-                
+                println!(
+                    "Maintenance scan complete: {} files, {} records",
+                    files_count, records_count
+                );
+
+                let _ = app.emit(
+                    "voltech-batch-progress",
+                    BatchProgressEvent {
+                        files_processed: files_count,
+                        records_inserted: records_count,
+                        errors,
+                    },
+                );
+
                 Ok(())
             }
-            Err(e) => Err(format!("Batch processing failed: {}", e))
+            Err(e) => Err(format!("Batch processing failed: {}", e)),
         }
     } else {
         println!("No files to process in maintenance scan");
@@ -418,7 +435,10 @@ async fn get_last_monthly_scan(db: &DatabaseConnection) -> Option<chrono::DateTi
     }
 }
 
-async fn set_last_monthly_scan(db: &DatabaseConnection, time: chrono::DateTime<chrono::Utc>) -> Result<(), String> {
+async fn set_last_monthly_scan(
+    db: &DatabaseConnection,
+    time: chrono::DateTime<chrono::Utc>,
+) -> Result<(), String> {
     operations::set_setting(db, "last_monthly_scan", &time.timestamp().to_string())
         .await
         .map_err(|e| format!("Failed to set last_monthly_scan: {}", e))

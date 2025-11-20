@@ -1,8 +1,8 @@
-use sea_orm::{Set, ActiveModelTrait, EntityTrait};
+use crate::AppState;
 use entity::test;
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use crate::AppState;
 
 // ============================================================================
 // DTOs
@@ -57,7 +57,10 @@ pub struct TestResponse {
 // ============================================================================
 
 #[tauri::command]
-pub async fn create_test(state: State<'_, AppState>, test_data: TestData) -> Result<TestResponse, String> {
+pub async fn create_test(
+    state: State<'_, AppState>,
+    test_data: TestData,
+) -> Result<TestResponse, String> {
     let db = &*state.core_db;
 
     let test_model = test::ActiveModel {
@@ -178,7 +181,11 @@ pub async fn get_all_tests(state: State<'_, AppState>) -> Result<Vec<TestRespons
 }
 
 #[tauri::command]
-pub async fn update_test(state: State<'_, AppState>, id: i32, test_data: TestData) -> Result<TestResponse, String> {
+pub async fn update_test(
+    state: State<'_, AppState>,
+    id: i32,
+    test_data: TestData,
+) -> Result<TestResponse, String> {
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(id)
@@ -254,7 +261,11 @@ pub async fn delete_test(state: State<'_, AppState>, id: i32) -> Result<String, 
 }
 
 #[tauri::command]
-pub async fn assign_test_to_report(state: State<'_, AppState>, test_id: i32, report_id: i32) -> Result<TestResponse, String> {
+pub async fn assign_test_to_report(
+    state: State<'_, AppState>,
+    test_id: i32,
+    report_id: i32,
+) -> Result<TestResponse, String> {
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
@@ -295,7 +306,10 @@ pub async fn assign_test_to_report(state: State<'_, AppState>, test_id: i32, rep
 }
 
 #[tauri::command]
-pub async fn unassign_test_from_report(state: State<'_, AppState>, test_id: i32) -> Result<TestResponse, String> {
+pub async fn unassign_test_from_report(
+    state: State<'_, AppState>,
+    test_id: i32,
+) -> Result<TestResponse, String> {
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
@@ -337,7 +351,11 @@ pub async fn unassign_test_from_report(state: State<'_, AppState>, test_id: i32)
 
 // Update test order for bulk reordering
 #[tauri::command]
-pub async fn update_test_order(state: State<'_, AppState>, test_id: i32, new_order: i32) -> Result<String, String> {
+pub async fn update_test_order(
+    state: State<'_, AppState>,
+    test_id: i32,
+    new_order: i32,
+) -> Result<String, String> {
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)

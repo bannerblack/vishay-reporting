@@ -59,7 +59,8 @@
 				added_by: null
 			};
 			const updated = await updateReport(report.id, reportData);
-			report = updated;
+			// Preserve the fg and tests properties from the complete report
+			report = { ...updated, fg: report.fg, tests: report.tests };
 			// Update form state with new values
 			attributes = updated.attributes;
 			alert('Report metadata saved!');
@@ -179,12 +180,14 @@ async function handleDeleteReport() {
 			<div>
 				<h3 class="text-sm font-medium mb-1">Finished Good</h3>
 				<p class="text-base">
-					{#if fgs.find(fg => fg.id === report.fg_id)}
-						{@const currentFg = fgs.find(fg => fg.id === report.fg_id)}
+				{#if fgs.find(fg => fg.id === report.fg_id)}
+					{@const currentFg = fgs.find(fg => fg.id === report.fg_id)}
+					{#if currentFg}
 						{currentFg.fg} Rev {currentFg.rev} - {currentFg.customer}
-					{:else}
-						Unknown FG
 					{/if}
+				{:else}
+					Unknown FG
+				{/if}
 				</p>
 			</div>
 
@@ -281,6 +284,7 @@ async function handleDeleteReport() {
 			{#if showTestForm}
 				<TestForm
 					fgId={report.fg_id}
+					fgNumber={report.fg.fg}
 					reportId={report.id}
 					onSubmit={handleCreateTest}
 					onCancel={() => showTestForm = false}

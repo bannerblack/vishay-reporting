@@ -10,6 +10,7 @@
     "sql:default",
     "opener:default",
     "store:default",
-    "clipboard:default"
+    "clipboard:default",
+    "dialog:default"
   ]
 }

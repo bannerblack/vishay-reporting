@@ -114,11 +114,7 @@ impl MigrationTrait for Migration {
                     .table(ProcessedFiles::Table)
                     .if_not_exists()
                     .col(pk_auto(ProcessedFiles::Id))
-                    .col(
-                        string(ProcessedFiles::FilePath)
-                            .not_null()
-                            .unique_key(),
-                    )
+                    .col(string(ProcessedFiles::FilePath).not_null().unique_key())
                     .col(big_integer(ProcessedFiles::FileSize).not_null())
                     .col(timestamp_with_time_zone(ProcessedFiles::FileModified).not_null())
                     .col(

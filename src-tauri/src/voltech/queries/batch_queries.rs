@@ -1,6 +1,6 @@
+use entity_voltech::{prelude::*, test_results};
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use entity_voltech::{test_results, prelude::*};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
 pub struct BatchSummary {

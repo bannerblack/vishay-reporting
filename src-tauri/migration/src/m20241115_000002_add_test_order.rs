@@ -10,12 +10,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Test::Table)
-                    .add_column(
-                        ColumnDef::new(Test::Order)
-                            .integer()
-                            .not_null()
-                            .default(0),
-                    )
+                    .add_column(ColumnDef::new(Test::Order).integer().not_null().default(0))
                     .to_owned(),
             )
             .await

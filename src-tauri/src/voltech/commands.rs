@@ -1,16 +1,16 @@
 // Tauri commands for voltech functionality
-use tauri::{AppHandle, State, Emitter};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait};
 use std::sync::Arc;
+use tauri::{AppHandle, Emitter, State};
 
+use crate::voltech::{file_watcher, operations, queries};
 use crate::AppState;
-use crate::voltech::{operations, file_watcher, queries};
-use entity_voltech;
 use entity;
+use entity_voltech;
 
 // Type aliases for query results
-pub use queries::{PartListItem as PartInfo};
+pub use queries::PartListItem as PartInfo;
 
 // ==================== DTOs ====================
 
@@ -46,7 +46,10 @@ pub struct DateRangeFilter {
 // ==================== Helper Functions ====================
 
 /// Check if user has admin permission
-async fn check_admin_permission(state: &State<'_, AppState>, username: &str) -> Result<bool, String> {
+async fn check_admin_permission(
+    state: &State<'_, AppState>,
+    username: &str,
+) -> Result<bool, String> {
     // Get user by username
     let user = entity::user::Entity::find()
         .filter(entity::user::Column::Username.eq(username))
@@ -69,31 +72,34 @@ async fn check_admin_permission(state: &State<'_, AppState>, username: &str) -> 
 
 /// Get current Windows username
 fn get_current_username() -> Result<String, String> {
-    whoami::username().parse().map_err(|_| "Failed to get username".to_string())
+    whoami::username()
+        .parse()
+        .map_err(|_| "Failed to get username".to_string())
 }
 
 /// Validate path - accepts both UNC paths and local drive paths
 fn validate_path(path: &str) -> Result<(), String> {
     // Check if it's a UNC path (\\server\share)
     let is_unc = path.starts_with("\\\\") || path.starts_with("//");
-    
+
     // Check if it's a local path (C:\path or C:/path)
-    let is_local = path.len() >= 3 && 
-                   path.chars().nth(1) == Some(':') && 
-                   (path.chars().nth(2) == Some('\\') || path.chars().nth(2) == Some('/'));
-    
+    let is_local = path.len() >= 3
+        && path.chars().nth(1) == Some(':')
+        && (path.chars().nth(2) == Some('\\') || path.chars().nth(2) == Some('/'));
+
     if !is_unc && !is_local {
         return Err(
-            "Path must be a valid UNC path (\\\\server\\share) or local path (C:\\path)".to_string()
+            "Path must be a valid UNC path (\\\\server\\share) or local path (C:\\path)"
+                .to_string(),
         );
     }
-    
+
     // Check if path exists
     let p = std::path::Path::new(path);
     if !p.exists() {
         return Err(format!("Path does not exist: {}", path));
     }
-    
+
     Ok(())
 }
 
@@ -105,7 +111,7 @@ pub async fn start_voltech_watcher(
     state: State<'_, AppState>,
 ) -> Result<WatcherStatusResponse, String> {
     let username = get_current_username()?;
-    
+
     // Get server path from settings
     let server_path = operations::get_setting(&state.voltech_db, "server_path")
         .await
@@ -136,8 +142,9 @@ pub async fn start_voltech_watcher(
             app,
             state.voltech_db.clone(),
             server_path,
-            instance_id.clone()
-        ).await?;
+            instance_id.clone(),
+        )
+        .await?;
 
         // Update state
         let mut watcher_state = state.voltech_watcher_state.lock().await;
@@ -160,24 +167,25 @@ pub async fn start_voltech_watcher(
             master_user: lock_info.map(|l| l.holder_name),
             is_active: false,
             is_paused: false,
-            can_force_master: check_admin_permission(&state, &username).await.unwrap_or(false),
+            can_force_master: check_admin_permission(&state, &username)
+                .await
+                .unwrap_or(false),
         })
     }
 }
 
 #[tauri::command]
-pub async fn stop_voltech_watcher(
-    state: State<'_, AppState>,
-) -> Result<String, String> {
+pub async fn stop_voltech_watcher(state: State<'_, AppState>) -> Result<String, String> {
     let mut watcher_state = state.voltech_watcher_state.lock().await;
-    
+
     if let Some(control_tx) = watcher_state.control_tx.take() {
-        control_tx.send(file_watcher::WatcherControl::Stop)
+        control_tx
+            .send(file_watcher::WatcherControl::Stop)
             .map_err(|e| format!("Failed to send stop signal: {}", e))?;
-        
+
         watcher_state.is_active = false;
         watcher_state.is_paused = false;
-        
+
         Ok("Watcher stopped".to_string())
     } else {
         Err("Watcher is not running".to_string())
@@ -185,17 +193,16 @@ pub async fn stop_voltech_watcher(
 }
 
 #[tauri::command]
-pub async fn pause_voltech_watcher(
-    state: State<'_, AppState>,
-) -> Result<String, String> {
+pub async fn pause_voltech_watcher(state: State<'_, AppState>) -> Result<String, String> {
     let mut watcher_state = state.voltech_watcher_state.lock().await;
-    
+
     if let Some(control_tx) = &watcher_state.control_tx {
-        control_tx.send(file_watcher::WatcherControl::Pause)
+        control_tx
+            .send(file_watcher::WatcherControl::Pause)
             .map_err(|e| format!("Failed to send pause signal: {}", e))?;
-        
+
         watcher_state.is_paused = true;
-        
+
         Ok("Watcher paused".to_string())
     } else {
         Err("Watcher is not running".to_string())
@@ -203,17 +210,16 @@ pub async fn pause_voltech_watcher(
 }
 
 #[tauri::command]
-pub async fn resume_voltech_watcher(
-    state: State<'_, AppState>,
-) -> Result<String, String> {
+pub async fn resume_voltech_watcher(state: State<'_, AppState>) -> Result<String, String> {
     let mut watcher_state = state.voltech_watcher_state.lock().await;
-    
+
     if let Some(control_tx) = &watcher_state.control_tx {
-        control_tx.send(file_watcher::WatcherControl::Resume)
+        control_tx
+            .send(file_watcher::WatcherControl::Resume)
             .map_err(|e| format!("Failed to send resume signal: {}", e))?;
-        
+
         watcher_state.is_paused = false;
-        
+
         Ok("Watcher resumed".to_string())
     } else {
         Err("Watcher is not running".to_string())
@@ -226,7 +232,7 @@ pub async fn get_voltech_watcher_status(
 ) -> Result<WatcherStatusResponse, String> {
     let username = get_current_username()?;
     let watcher_state = state.voltech_watcher_state.lock().await;
-    
+
     // Get lock info
     let lock_info = operations::get_lock_info(&state.voltech_db)
         .await
@@ -247,7 +253,9 @@ pub async fn get_voltech_watcher_status(
                 master_user: Some(lock.holder_name),
                 is_active: false,
                 is_paused: false,
-                can_force_master: check_admin_permission(&state, &username).await.unwrap_or(false),
+                can_force_master: check_admin_permission(&state, &username)
+                    .await
+                    .unwrap_or(false),
             })
         } else {
             Ok(WatcherStatusResponse {
@@ -276,7 +284,7 @@ pub async fn import_voltech_files(
     _date_range: DateRangeFilter,
 ) -> Result<String, String> {
     let username = get_current_username()?;
-    
+
     // Check admin permission
     if !check_admin_permission(&state, &username).await? {
         return Err("Admin permission required".to_string());
@@ -293,7 +301,8 @@ pub async fn import_voltech_files(
         let mut watcher_state = state.voltech_watcher_state.lock().await;
         if watcher_state.is_active && !watcher_state.is_paused {
             if let Some(control_tx) = &watcher_state.control_tx {
-                control_tx.send(file_watcher::WatcherControl::Pause)
+                control_tx
+                    .send(file_watcher::WatcherControl::Pause)
                     .map_err(|e| format!("Failed to pause watcher: {}", e))?;
                 watcher_state.is_paused = true;
             }
@@ -305,11 +314,7 @@ pub async fn import_voltech_files(
 
     // Parse date range and get files
     // For now, we'll use maintenance scan which processes last 30 days
-    let result = file_watcher::run_maintenance_scan(
-        &app,
-        &state.voltech_db,
-        &server_path
-    ).await;
+    let result = file_watcher::run_maintenance_scan(&app, &state.voltech_db, &server_path).await;
 
     // Resume watcher if it was running
     if !was_paused {
@@ -328,7 +333,7 @@ pub async fn force_acquire_voltech_master(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let username = get_current_username()?;
-    
+
     // Check admin permission
     if !check_admin_permission(&state, &username).await? {
         return Err("Admin permission required".to_string());
@@ -348,9 +353,7 @@ pub async fn force_acquire_voltech_master(
 // ==================== Settings Commands ====================
 
 #[tauri::command]
-pub async fn get_voltech_settings(
-    state: State<'_, AppState>,
-) -> Result<VoltechSettings, String> {
+pub async fn get_voltech_settings(state: State<'_, AppState>) -> Result<VoltechSettings, String> {
     let server_path = operations::get_setting(&state.voltech_db, "server_path")
         .await
         .map_err(|e| format!("Failed to get server_path: {}", e))?
@@ -374,7 +377,7 @@ pub async fn set_voltech_setting(
     value: String,
 ) -> Result<String, String> {
     let username = get_current_username()?;
-    
+
     // Check admin permission
     if !check_admin_permission(&state, &username).await? {
         return Err("Admin permission required".to_string());
@@ -407,7 +410,7 @@ pub async fn delete_voltech_setting(
     key: String,
 ) -> Result<String, String> {
     let username = get_current_username()?;
-    
+
     // Check admin permission
     if !check_admin_permission(&state, &username).await? {
         return Err("Admin permission required".to_string());
@@ -474,11 +477,9 @@ pub async fn get_voltech_lock_status(
 }
 
 #[tauri::command]
-pub async fn force_release_voltech_lock(
-    state: State<'_, AppState>,
-) -> Result<String, String> {
+pub async fn force_release_voltech_lock(state: State<'_, AppState>) -> Result<String, String> {
     let username = get_current_username()?;
-    
+
     // Check admin permission
     if !check_admin_permission(&state, &username).await? {
         return Err("Admin permission required".to_string());
@@ -617,13 +618,9 @@ pub async fn get_daily_stats(
     date_from: Option<String>,
     date_to: Option<String>,
 ) -> Result<Vec<queries::DailyStats>, String> {
-    queries::get_daily_stats(
-        &state.voltech_db,
-        date_from.as_deref(),
-        date_to.as_deref()
-    )
-    .await
-    .map_err(|e| format!("Failed to get daily stats: {}", e))
+    queries::get_daily_stats(&state.voltech_db, date_from.as_deref(), date_to.as_deref())
+        .await
+        .map_err(|e| format!("Failed to get daily stats: {}", e))
 }
 
 #[tauri::command]
@@ -632,13 +629,9 @@ pub async fn get_operator_stats(
     date_from: Option<String>,
     date_to: Option<String>,
 ) -> Result<Vec<queries::OperatorStats>, String> {
-    queries::get_operator_stats(
-        &state.voltech_db,
-        date_from.as_deref(),
-        date_to.as_deref()
-    )
-    .await
-    .map_err(|e| format!("Failed to get operator stats: {}", e))
+    queries::get_operator_stats(&state.voltech_db, date_from.as_deref(), date_to.as_deref())
+        .await
+        .map_err(|e| format!("Failed to get operator stats: {}", e))
 }
 
 #[tauri::command]
@@ -662,11 +655,9 @@ pub async fn get_part_stats(
 // ==================== Full Historical Import Commands ====================
 
 #[tauri::command]
-pub async fn reset_voltech_database(
-    state: State<'_, AppState>,
-) -> Result<String, String> {
+pub async fn reset_voltech_database(state: State<'_, AppState>) -> Result<String, String> {
     let username = get_current_username()?;
-    
+
     // Check admin permission
     if !check_admin_permission(&state, &username).await? {
         return Err("Admin permission required".to_string());
@@ -681,12 +672,12 @@ pub async fn reset_voltech_database(
 
     // Drop all tables by running migrations down and back up
     use migration_voltech::{Migrator, MigratorTrait};
-    
+
     // Reset all migrations (drop all tables)
     Migrator::down(&*state.voltech_db, None)
         .await
         .map_err(|e| format!("Failed to drop tables: {}", e))?;
-    
+
     // Re-run migrations to create fresh tables
     Migrator::up(&*state.voltech_db, None)
         .await
@@ -702,15 +693,18 @@ pub async fn full_import_voltech_files(
     server_path: String,
     db_path: Option<String>,
 ) -> Result<String, String> {
-    println!("Full import started - server_path: {}, db_path: {:?}", server_path, db_path);
-    
+    println!(
+        "Full import started - server_path: {}, db_path: {:?}",
+        server_path, db_path
+    );
+
     let username = get_current_username()?;
-    
+
     // Check admin permission
     if !check_admin_permission(&state, &username).await? {
         return Err("Admin permission required".to_string());
     }
-    
+
     println!("Admin check passed");
 
     // Make sure watcher is stopped
@@ -719,7 +713,7 @@ pub async fn full_import_voltech_files(
         return Err("Watcher must be stopped before full import".to_string());
     }
     drop(watcher_state);
-    
+
     println!("Watcher check passed");
 
     // Determine which database to use
@@ -731,13 +725,13 @@ pub async fn full_import_voltech_files(
         let temp_db = Database::connect(&db_url)
             .await
             .map_err(|e| format!("Failed to connect to custom database: {}", e))?;
-        
+
         // Run migrations on custom database
         use migration_voltech::{Migrator, MigratorTrait};
         Migrator::up(&temp_db, None)
             .await
             .map_err(|e| format!("Failed to run migrations on custom database: {}", e))?;
-        
+
         println!("Custom database migrations completed");
         Arc::new(temp_db)
     } else {
@@ -746,18 +740,21 @@ pub async fn full_import_voltech_files(
     };
 
     println!("Scanning directory: {}", server_path);
-    
+
     // Get ALL files (no date filter)
     let files = file_watcher::get_all_voltech_files(&server_path).await?;
-    
+
     println!("Full import: Found {} total files", files.len());
-    
+
     // Emit initial progress
-    let _ = app.emit("voltech-batch-progress", file_watcher::BatchProgressEvent {
-        files_processed: 0,
-        records_inserted: 0,
-        errors: vec![format!("Found {} files to scan", files.len())],
-    });
+    let _ = app.emit(
+        "voltech-batch-progress",
+        file_watcher::BatchProgressEvent {
+            files_processed: 0,
+            records_inserted: 0,
+            errors: vec![format!("Found {} files to scan", files.len())],
+        },
+    );
 
     // Get files that need processing using relative path tracking
     let mut files_to_process = Vec::new();
@@ -767,7 +764,7 @@ pub async fn full_import_voltech_files(
             if let Ok(modified) = metadata.modified() {
                 if let Ok(duration) = modified.duration_since(std::time::SystemTime::UNIX_EPOCH) {
                     let file_modified = duration.as_secs() as i32;
-                    
+
                     // Extract relative path
                     let path_str = file_path.to_str().unwrap();
                     let relative_path = path_str
@@ -775,15 +772,17 @@ pub async fn full_import_voltech_files(
                         .trim_start_matches('\\')
                         .trim_start_matches('/')
                         .to_string();
-                    
+
                     match operations::needs_processing_relative(
                         &target_db,
                         &relative_path,
                         file_size,
-                        file_modified
-                    ).await {
+                        file_modified,
+                    )
+                    .await
+                    {
                         Ok(true) => files_to_process.push((path_str.to_string(), relative_path)),
-                        Ok(false) => {},
+                        Ok(false) => {}
                         Err(e) => eprintln!("Error checking file: {}", e),
                     }
                 }
@@ -796,10 +795,10 @@ pub async fn full_import_voltech_files(
     }
 
     println!("Processing {} files in full import", files_to_process.len());
-    
+
     // Process files with relative path tracking
     let file_paths: Vec<String> = files_to_process.iter().map(|(p, _)| p.clone()).collect();
-    
+
     match crate::voltech::parser::process_files_batch(&target_db, &file_paths, 3).await {
         Ok((files_count, records_count, errors)) => {
             // Mark files as processed with relative paths
@@ -807,7 +806,9 @@ pub async fn full_import_voltech_files(
                 if let Ok(metadata) = tokio::fs::metadata(full_path).await {
                     let file_size = metadata.len() as i32;
                     if let Ok(modified) = metadata.modified() {
-                        if let Ok(duration) = modified.duration_since(std::time::SystemTime::UNIX_EPOCH) {
+                        if let Ok(duration) =
+                            modified.duration_since(std::time::SystemTime::UNIX_EPOCH)
+                        {
                             let file_modified = duration.as_secs() as i32;
                             let _ = operations::mark_file_processed_relative(
                                 &target_db,
@@ -815,24 +816,34 @@ pub async fn full_import_voltech_files(
                                 relative_path,
                                 file_size,
                                 file_modified,
-                                0 // Will be updated by actual record count
-                            ).await;
+                                0, // Will be updated by actual record count
+                            )
+                            .await;
                         }
                     }
                 }
             }
-            
-            println!("Full import complete: {} files, {} records", files_count, records_count);
-            
-            let _ = app.emit("voltech-batch-progress", file_watcher::BatchProgressEvent {
-                files_processed: files_count,
-                records_inserted: records_count,
-                errors,
-            });
-            
-            Ok(format!("Import completed: {} files processed, {} records inserted", files_count, records_count))
+
+            println!(
+                "Full import complete: {} files, {} records",
+                files_count, records_count
+            );
+
+            let _ = app.emit(
+                "voltech-batch-progress",
+                file_watcher::BatchProgressEvent {
+                    files_processed: files_count,
+                    records_inserted: records_count,
+                    errors,
+                },
+            );
+
+            Ok(format!(
+                "Import completed: {} files processed, {} records inserted",
+                files_count, records_count
+            ))
         }
-        Err(e) => Err(format!("Batch processing failed: {}", e))
+        Err(e) => Err(format!("Batch processing failed: {}", e)),
     }
 }
 
@@ -842,7 +853,7 @@ pub async fn update_server_path_setting(
     new_path: String,
 ) -> Result<String, String> {
     let username = get_current_username()?;
-    
+
     // Check admin permission
     if !check_admin_permission(&state, &username).await? {
         return Err("Admin permission required".to_string());

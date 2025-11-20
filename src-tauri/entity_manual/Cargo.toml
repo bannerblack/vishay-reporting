@@ -1,0 +1,12 @@
+[package]
+name = "entity_manual"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "entity_manual"
+path = "src/mod.rs"
+
+[dependencies]
+sea-orm = "2.0.0-rc.18"
+serde = { version = "1", features = ["derive"] }

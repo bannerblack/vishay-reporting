@@ -1,6 +1,6 @@
+use entity_voltech::test_results;
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use entity_voltech::test_results;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
 pub struct DailyStats {
@@ -144,9 +144,7 @@ pub async fn get_operator_stats(
 }
 
 /// Get overall statistics
-pub async fn get_overall_stats(
-    db: &DatabaseConnection,
-) -> Result<Option<OverallStats>, DbErr> {
+pub async fn get_overall_stats(db: &DatabaseConnection) -> Result<Option<OverallStats>, DbErr> {
     let sql = r#"
         SELECT 
             COUNT(*) as total_tests,
@@ -159,13 +157,10 @@ pub async fn get_overall_stats(
         FROM test_results
     "#;
 
-    let result = OverallStats::find_by_statement(Statement::from_sql_and_values(
-        DbBackend::Sqlite,
-        sql,
-        [],
-    ))
-    .one(db)
-    .await?;
+    let result =
+        OverallStats::find_by_statement(Statement::from_sql_and_values(DbBackend::Sqlite, sql, []))
+            .one(db)
+            .await?;
 
     Ok(result)
 }
@@ -200,9 +195,7 @@ pub async fn get_part_stats(
 }
 
 /// Get date range for available data
-pub async fn get_date_range(
-    db: &DatabaseConnection,
-) -> Result<Option<(String, String)>, DbErr> {
+pub async fn get_date_range(db: &DatabaseConnection) -> Result<Option<(String, String)>, DbErr> {
     #[derive(Debug, FromQueryResult)]
     struct DateRange {
         min_date: String,
@@ -216,13 +209,10 @@ pub async fn get_date_range(
         FROM test_results
     "#;
 
-    let result = DateRange::find_by_statement(Statement::from_sql_and_values(
-        DbBackend::Sqlite,
-        sql,
-        [],
-    ))
-    .one(db)
-    .await?;
+    let result =
+        DateRange::find_by_statement(Statement::from_sql_and_values(DbBackend::Sqlite, sql, []))
+            .one(db)
+            .await?;
 
     Ok(result.map(|r| (r.min_date, r.max_date)))
 }

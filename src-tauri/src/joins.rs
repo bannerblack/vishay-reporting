@@ -1,9 +1,9 @@
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, ModelTrait};
-use sea_orm::sea_query::ExprTrait;
+use crate::AppState;
 use entity::{fg, report, test};
+use sea_orm::sea_query::ExprTrait;
+use sea_orm::{ColumnTrait, EntityTrait, ModelTrait, QueryFilter};
 use serde::Serialize;
 use tauri::State;
-use crate::AppState;
 
 // Re-export response types from other modules
 use crate::fg::FGResponse;
@@ -111,7 +111,10 @@ pub struct TestCompleteResponse {
 // ============================================================================
 
 #[tauri::command]
-pub async fn get_fg_with_reports(state: State<'_, AppState>, fg_id: i32) -> Result<FGWithReportsResponse, String> {
+pub async fn get_fg_with_reports(
+    state: State<'_, AppState>,
+    fg_id: i32,
+) -> Result<FGWithReportsResponse, String> {
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find_by_id(fg_id)
@@ -143,7 +146,10 @@ pub async fn get_fg_with_reports(state: State<'_, AppState>, fg_id: i32) -> Resu
 }
 
 #[tauri::command]
-pub async fn get_fg_with_tests(state: State<'_, AppState>, fg_id: i32) -> Result<FGWithTestsResponse, String> {
+pub async fn get_fg_with_tests(
+    state: State<'_, AppState>,
+    fg_id: i32,
+) -> Result<FGWithTestsResponse, String> {
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find_by_id(fg_id)
@@ -191,7 +197,10 @@ pub async fn get_fg_with_tests(state: State<'_, AppState>, fg_id: i32) -> Result
 }
 
 #[tauri::command]
-pub async fn get_fg_complete(state: State<'_, AppState>, fg_id: i32) -> Result<FGCompleteResponse, String> {
+pub async fn get_fg_complete(
+    state: State<'_, AppState>,
+    fg_id: i32,
+) -> Result<FGCompleteResponse, String> {
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find_by_id(fg_id)
@@ -257,7 +266,10 @@ pub async fn get_fg_complete(state: State<'_, AppState>, fg_id: i32) -> Result<F
 // ============================================================================
 
 #[tauri::command]
-pub async fn get_report_with_fg(state: State<'_, AppState>, report_id: i32) -> Result<ReportWithFGResponse, String> {
+pub async fn get_report_with_fg(
+    state: State<'_, AppState>,
+    report_id: i32,
+) -> Result<ReportWithFGResponse, String> {
     let db = &*state.core_db;
 
     let report_model = report::Entity::find_by_id(report_id)
@@ -281,12 +293,16 @@ pub async fn get_report_with_fg(state: State<'_, AppState>, report_id: i32) -> R
             fg: fg_model.fg,
             rev: fg_model.rev,
             customer: fg_model.customer,
+            serialized: fg_model.serialized,
         },
     })
 }
 
 #[tauri::command]
-pub async fn get_report_with_tests(state: State<'_, AppState>, report_id: i32) -> Result<ReportWithTestsResponse, String> {
+pub async fn get_report_with_tests(
+    state: State<'_, AppState>,
+    report_id: i32,
+) -> Result<ReportWithTestsResponse, String> {
     let db = &*state.core_db;
 
     let report_model = report::Entity::find_by_id(report_id)
@@ -333,7 +349,10 @@ pub async fn get_report_with_tests(state: State<'_, AppState>, report_id: i32) -
 }
 
 #[tauri::command]
-pub async fn get_report_complete(state: State<'_, AppState>, report_id: i32) -> Result<ReportCompleteResponse, String> {
+pub async fn get_report_complete(
+    state: State<'_, AppState>,
+    report_id: i32,
+) -> Result<ReportCompleteResponse, String> {
     let db = &*state.core_db;
 
     let report_model = report::Entity::find_by_id(report_id)
@@ -363,6 +382,7 @@ pub async fn get_report_complete(state: State<'_, AppState>, report_id: i32) -> 
             fg: fg_model.fg,
             rev: fg_model.rev,
             customer: fg_model.customer,
+            serialized: fg_model.serialized,
         },
         tests: tests
             .into_iter()
@@ -396,7 +416,10 @@ pub async fn get_report_complete(state: State<'_, AppState>, report_id: i32) -> 
 // ============================================================================
 
 #[tauri::command]
-pub async fn get_test_with_fg(state: State<'_, AppState>, test_id: i32) -> Result<TestWithFGResponse, String> {
+pub async fn get_test_with_fg(
+    state: State<'_, AppState>,
+    test_id: i32,
+) -> Result<TestWithFGResponse, String> {
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
@@ -425,12 +448,16 @@ pub async fn get_test_with_fg(state: State<'_, AppState>, test_id: i32) -> Resul
             fg: fg_model.fg,
             rev: fg_model.rev,
             customer: fg_model.customer,
+            serialized: fg_model.serialized,
         },
     })
 }
 
 #[tauri::command]
-pub async fn get_test_with_report(state: State<'_, AppState>, test_id: i32) -> Result<TestWithReportResponse, String> {
+pub async fn get_test_with_report(
+    state: State<'_, AppState>,
+    test_id: i32,
+) -> Result<TestWithReportResponse, String> {
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
@@ -468,7 +495,10 @@ pub async fn get_test_with_report(state: State<'_, AppState>, test_id: i32) -> R
 }
 
 #[tauri::command]
-pub async fn get_test_complete(state: State<'_, AppState>, test_id: i32) -> Result<TestCompleteResponse, String> {
+pub async fn get_test_complete(
+    state: State<'_, AppState>,
+    test_id: i32,
+) -> Result<TestCompleteResponse, String> {
     let db = &*state.core_db;
 
     let test_model = test::Entity::find_by_id(test_id)
@@ -511,6 +541,7 @@ pub async fn get_test_complete(state: State<'_, AppState>, test_id: i32) -> Resu
             fg: fg_model.fg,
             rev: fg_model.rev,
             customer: fg_model.customer,
+            serialized: fg_model.serialized,
         },
         report: report_response,
     })
@@ -521,7 +552,9 @@ pub async fn get_test_complete(state: State<'_, AppState>, test_id: i32) -> Resu
 // ============================================================================
 
 #[tauri::command]
-pub async fn get_all_reports_with_fg(state: State<'_, AppState>) -> Result<Vec<ReportWithFGResponse>, String> {
+pub async fn get_all_reports_with_fg(
+    state: State<'_, AppState>,
+) -> Result<Vec<ReportWithFGResponse>, String> {
     let db = &*state.core_db;
 
     let reports = report::Entity::find()
@@ -547,6 +580,7 @@ pub async fn get_all_reports_with_fg(state: State<'_, AppState>) -> Result<Vec<R
                 fg: fg_model.fg,
                 rev: fg_model.rev,
                 customer: fg_model.customer,
+                serialized: fg_model.serialized,
             },
         });
     }
@@ -555,7 +589,10 @@ pub async fn get_all_reports_with_fg(state: State<'_, AppState>) -> Result<Vec<R
 }
 
 #[tauri::command]
-pub async fn get_all_tests_by_fg(state: State<'_, AppState>, fg_id: i32) -> Result<Vec<TestResponse>, String> {
+pub async fn get_all_tests_by_fg(
+    state: State<'_, AppState>,
+    fg_id: i32,
+) -> Result<Vec<TestResponse>, String> {
     let db = &*state.core_db;
 
     let tests = test::Entity::find()
@@ -591,7 +628,10 @@ pub async fn get_all_tests_by_fg(state: State<'_, AppState>, fg_id: i32) -> Resu
 }
 
 #[tauri::command]
-pub async fn get_all_tests_by_report(state: State<'_, AppState>, report_id: i32) -> Result<Vec<TestResponse>, String> {
+pub async fn get_all_tests_by_report(
+    state: State<'_, AppState>,
+    report_id: i32,
+) -> Result<Vec<TestResponse>, String> {
     let db = &*state.core_db;
 
     let tests = test::Entity::find()
@@ -628,7 +668,10 @@ pub async fn get_all_tests_by_report(state: State<'_, AppState>, report_id: i32)
 
 // Get tests available for a report (tests from the same FG not yet assigned to this report)
 #[tauri::command]
-pub async fn get_available_tests_for_report(state: State<'_, AppState>, report_id: i32) -> Result<Vec<TestResponse>, String> {
+pub async fn get_available_tests_for_report(
+    state: State<'_, AppState>,
+    report_id: i32,
+) -> Result<Vec<TestResponse>, String> {
     let db = &*state.core_db;
 
     // Get the report to find its FG
@@ -644,7 +687,7 @@ pub async fn get_available_tests_for_report(state: State<'_, AppState>, report_i
         .filter(
             test::Column::ReportId
                 .is_null()
-                .or(test::Column::ReportId.ne(report_id))
+                .or(test::Column::ReportId.ne(report_id)),
         )
         .all(db)
         .await

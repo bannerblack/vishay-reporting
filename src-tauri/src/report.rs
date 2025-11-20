@@ -1,8 +1,8 @@
-use sea_orm::{Set, ActiveModelTrait, EntityTrait};
+use crate::AppState;
 use entity::report;
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use crate::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct ReportData {
@@ -19,7 +19,10 @@ pub struct ReportResponse {
 }
 
 #[tauri::command]
-pub async fn create_report(state: State<'_, AppState>, report_data: ReportData) -> Result<ReportResponse, String> {
+pub async fn create_report(
+    state: State<'_, AppState>,
+    report_data: ReportData,
+) -> Result<ReportResponse, String> {
     let db = &*state.core_db;
 
     let report = report::ActiveModel {
@@ -78,7 +81,11 @@ pub async fn get_all_reports(state: State<'_, AppState>) -> Result<Vec<ReportRes
 }
 
 #[tauri::command]
-pub async fn update_report(state: State<'_, AppState>, id: i32, report_data: ReportData) -> Result<ReportResponse, String> {
+pub async fn update_report(
+    state: State<'_, AppState>,
+    id: i32,
+    report_data: ReportData,
+) -> Result<ReportResponse, String> {
     let db = &*state.core_db;
 
     let report = report::Entity::find_by_id(id)

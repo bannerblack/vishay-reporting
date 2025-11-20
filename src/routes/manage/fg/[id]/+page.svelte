@@ -108,6 +108,7 @@
 			{#if showTestForm}
 				<TestForm
 					fgId={fg.id}
+					fgNumber={fg.fg}
 					onSubmit={handleCreateTest}
 					onCancel={() => showTestForm = false}
 					buttonText="Create Test"

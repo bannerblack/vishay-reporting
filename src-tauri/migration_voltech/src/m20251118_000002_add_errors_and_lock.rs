@@ -21,11 +21,7 @@ impl MigrationTrait for Migration {
                             .default(Expr::current_timestamp())
                             .not_null(),
                     )
-                    .col(
-                        boolean(ParseErrors::Acknowledged)
-                            .default(false)
-                            .not_null(),
-                    )
+                    .col(boolean(ParseErrors::Acknowledged).default(false).not_null())
                     .to_owned(),
             )
             .await?;
@@ -70,12 +66,7 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(WatcherLock::Table)
                     .if_not_exists()
-                    .col(
-                        integer(WatcherLock::Id)
-                            .primary_key()
-                            .default(1)
-                            .not_null(),
-                    )
+                    .col(integer(WatcherLock::Id).primary_key().default(1).not_null())
                     .col(string(WatcherLock::HolderId).not_null())
                     .col(string(WatcherLock::HolderName).not_null())
                     .col(
@@ -88,11 +79,7 @@ impl MigrationTrait for Migration {
                             .default(Expr::current_timestamp())
                             .not_null(),
                     )
-                    .col(
-                        boolean(WatcherLock::IsActive)
-                            .default(true)
-                            .not_null(),
-                    )
+                    .col(boolean(WatcherLock::IsActive).default(true).not_null())
                     .to_owned(),
             )
             .await?;

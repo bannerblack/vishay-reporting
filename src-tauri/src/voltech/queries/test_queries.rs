@@ -1,6 +1,6 @@
+use entity_voltech::{prelude::*, test_results};
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use entity_voltech::{test_results, prelude::*};
 
 /// Search tests with filters
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -112,10 +112,7 @@ pub async fn get_tests_by_batch(
 }
 
 /// Count tests by filter
-pub async fn count_tests(
-    db: &DatabaseConnection,
-    filter: TestSearchFilter,
-) -> Result<u64, DbErr> {
+pub async fn count_tests(db: &DatabaseConnection, filter: TestSearchFilter) -> Result<u64, DbErr> {
     let mut query = TestResults::find();
 
     if let Some(part) = filter.part {

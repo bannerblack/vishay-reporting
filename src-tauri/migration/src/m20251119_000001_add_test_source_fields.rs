@@ -15,7 +15,7 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(Test::SourceType)
                             .string()
                             .not_null()
-                            .default("other")
+                            .default("other"),
                     )
                     .to_owned(),
             )
@@ -26,11 +26,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Test::Table)
-                    .add_column(
-                        ColumnDef::new(Test::AssociatedTest)
-                            .string()
-                            .null()
-                    )
+                    .add_column(ColumnDef::new(Test::AssociatedTest).string().null())
                     .to_owned(),
             )
             .await?;
@@ -40,11 +36,7 @@ impl MigrationTrait for Migration {
             .alter_table(
                 Table::alter()
                     .table(Test::Table)
-                    .add_column(
-                        ColumnDef::new(Test::ManualOverride)
-                            .boolean()
-                            .null()
-                    )
+                    .add_column(ColumnDef::new(Test::ManualOverride).boolean().null())
                     .to_owned(),
             )
             .await?;

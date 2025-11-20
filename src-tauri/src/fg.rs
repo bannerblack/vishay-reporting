@@ -1,8 +1,8 @@
-use sea_orm::{Set, ActiveModelTrait, EntityTrait, QueryFilter, ColumnTrait};
+use crate::AppState;
 use entity::fg;
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use crate::AppState;
 
 // ============================================================================
 // DTOs
@@ -13,6 +13,7 @@ pub struct FGData {
     pub fg: String,
     pub rev: String,
     pub customer: String,
+    pub serialized: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -21,6 +22,7 @@ pub struct FGResponse {
     pub fg: String,
     pub rev: String,
     pub customer: String,
+    pub serialized: bool,
 }
 
 // ============================================================================
@@ -46,6 +48,7 @@ pub async fn create_fg(state: State<'_, AppState>, fg_data: FGData) -> Result<FG
         fg: Set(fg_data.fg),
         rev: Set(fg_data.rev),
         customer: Set(fg_data.customer),
+        serialized: Set(fg_data.serialized),
         ..Default::default()
     };
 
@@ -59,6 +62,7 @@ pub async fn create_fg(state: State<'_, AppState>, fg_data: FGData) -> Result<FG
         fg: fg_model.fg,
         rev: fg_model.rev,
         customer: fg_model.customer,
+        serialized: fg_model.serialized,
     })
 }
 
@@ -77,11 +81,15 @@ pub async fn get_fg(state: State<'_, AppState>, id: i32) -> Result<FGResponse, S
         fg: fg_model.fg,
         rev: fg_model.rev,
         customer: fg_model.customer,
+        serialized: fg_model.serialized,
     })
 }
 
 #[tauri::command]
-pub async fn get_fg_by_number(state: State<'_, AppState>, fg_number: String) -> Result<FGResponse, String> {
+pub async fn get_fg_by_number(
+    state: State<'_, AppState>,
+    fg_number: String,
+) -> Result<FGResponse, String> {
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find()
@@ -96,6 +104,7 @@ pub async fn get_fg_by_number(state: State<'_, AppState>, fg_number: String) -> 
         fg: fg_model.fg,
         rev: fg_model.rev,
         customer: fg_model.customer,
+        serialized: fg_model.serialized,
     })
 }
 
@@ -115,12 +124,17 @@ pub async fn get_all_fgs(state: State<'_, AppState>) -> Result<Vec<FGResponse>, 
             fg: fg_model.fg,
             rev: fg_model.rev,
             customer: fg_model.customer,
+            serialized: fg_model.serialized,
         })
         .collect())
 }
 
 #[tauri::command]
-pub async fn update_fg(state: State<'_, AppState>, id: i32, fg_data: FGData) -> Result<FGResponse, String> {
+pub async fn update_fg(
+    state: State<'_, AppState>,
+    id: i32,
+    fg_data: FGData,
+) -> Result<FGResponse, String> {
     let db = &*state.core_db;
 
     let fg_model = fg::Entity::find_by_id(id)
@@ -133,6 +147,7 @@ pub async fn update_fg(state: State<'_, AppState>, id: i32, fg_data: FGData) -> 
     fg_model.fg = Set(fg_data.fg);
     fg_model.rev = Set(fg_data.rev);
     fg_model.customer = Set(fg_data.customer);
+    fg_model.serialized = Set(fg_data.serialized);
 
     let fg_model: fg::Model = fg_model
         .update(db)
@@ -144,6 +159,7 @@ pub async fn update_fg(state: State<'_, AppState>, id: i32, fg_data: FGData) -> 
         fg: fg_model.fg,
         rev: fg_model.rev,
         customer: fg_model.customer,
+        serialized: fg_model.serialized,
     })
 }
 

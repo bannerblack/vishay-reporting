@@ -15,7 +15,7 @@ impl MigrationTrait for Migration {
                         ColumnDef::new(User::Permissions)
                             .string()
                             .not_null()
-                            .default("[]")
+                            .default("[]"),
                     )
                     .to_owned(),
             )

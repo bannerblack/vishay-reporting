@@ -1,8 +1,8 @@
-use sea_orm::{Set, ActiveModelTrait, EntityTrait, QueryFilter, ColumnTrait};
+use crate::AppState;
 use entity::event;
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use crate::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct EventData {
@@ -25,7 +25,10 @@ pub struct EventResponse {
 }
 
 #[tauri::command]
-pub async fn create_event(state: State<'_, AppState>, event_data: EventData) -> Result<EventResponse, String> {
+pub async fn create_event(
+    state: State<'_, AppState>,
+    event_data: EventData,
+) -> Result<EventResponse, String> {
     let db = &*state.core_db;
 
     let event = event::ActiveModel {
@@ -108,7 +111,11 @@ pub struct UpdateEventData {
 }
 
 #[tauri::command]
-pub async fn update_event(state: State<'_, AppState>, id: i32, event_data: UpdateEventData) -> Result<EventResponse, String> {
+pub async fn update_event(
+    state: State<'_, AppState>,
+    id: i32,
+    event_data: UpdateEventData,
+) -> Result<EventResponse, String> {
     let db = &*state.core_db;
 
     let event = event::Entity::find_by_id(id)
@@ -118,11 +125,11 @@ pub async fn update_event(state: State<'_, AppState>, id: i32, event_data: Updat
         .ok_or_else(|| "Event not found".to_string())?;
 
     let mut event: event::ActiveModel = event.into();
-    
+
     if let Some(comment) = event_data.comment {
         event.comment = Set(comment);
     }
-    
+
     if let Some(complete) = event_data.complete {
         event.complete = Set(complete);
         if complete {
@@ -200,7 +207,10 @@ pub async fn delete_event(state: State<'_, AppState>, id: i32) -> Result<String,
 }
 
 #[tauri::command]
-pub async fn get_events_by_user(state: State<'_, AppState>, user_id: i32) -> Result<Vec<EventResponse>, String> {
+pub async fn get_events_by_user(
+    state: State<'_, AppState>,
+    user_id: i32,
+) -> Result<Vec<EventResponse>, String> {
     let db = &*state.core_db;
 
     let events = event::Entity::find()

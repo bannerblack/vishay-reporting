@@ -3,6 +3,7 @@ pub use sea_orm_migration::prelude::*;
 mod m20220101_000001_create_table;
 mod m20251118_000002_add_errors_and_lock;
 mod m20251119_000003_add_relative_path;
+mod m20251120_174215_add_normalized_date_to_voltech;
 
 pub struct Migrator;
 
@@ -13,6 +14,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20220101_000001_create_table::Migration),
             Box::new(m20251118_000002_add_errors_and_lock::Migration),
             Box::new(m20251119_000003_add_relative_path::Migration),
+            Box::new(m20251120_174215_add_normalized_date_to_voltech::Migration),
         ]
     }
 }

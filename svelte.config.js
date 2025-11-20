@@ -12,7 +12,9 @@ const config = {
 			fallback: 'index.html'
 		}),
 		alias: {
-			'$types':"src/types/types"
+			'$types':"src/types/types",
+			'$db': "src/db",
+			'$components': "src/components"
 		},
 		csrf: {
 			trustedOrigins: ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost']

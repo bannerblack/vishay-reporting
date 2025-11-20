@@ -1,10 +1,10 @@
 // Database operations for voltech integration with SeaORM
-use entity_voltech::{processed_files, settings, parse_errors, watcher_lock};
-use sea_orm::{entity::*, query::*, DbConn, DbErr, Set, ActiveValue::NotSet};
-use sea_orm::sea_query::{OnConflict, Expr};
 use chrono::Utc;
-use uuid::Uuid;
+use entity_voltech::{parse_errors, processed_files, settings, watcher_lock};
+use sea_orm::sea_query::{Expr, OnConflict};
+use sea_orm::{entity::*, query::*, ActiveValue::NotSet, DbConn, DbErr, Set};
 use std::path::Path;
+use uuid::Uuid;
 
 // ==================== Path Utilities ====================
 
@@ -12,8 +12,11 @@ use std::path::Path;
 /// Example: strip_server_prefix("\\server\share\Results1\C0.atr", "\\server\share") => "Results1\C0.atr"
 fn strip_server_prefix(full_path: &str, server_path: &str) -> String {
     let normalized_full = full_path.replace('/', "\\");
-    let normalized_server = server_path.replace('/', "\\").trim_end_matches('\\').to_string();
-    
+    let normalized_server = server_path
+        .replace('/', "\\")
+        .trim_end_matches('\\')
+        .to_string();
+
     if let Some(relative) = normalized_full.strip_prefix(&normalized_server) {
         relative.trim_start_matches('\\').to_string()
     } else {
@@ -45,7 +48,8 @@ pub async fn needs_processing(
     match existing {
         Some(record) => {
             // Check if file has changed (compare timestamps as i32)
-            Ok(record.file_size != file_size || record.file_modified.timestamp() as i32 != file_modified)
+            Ok(record.file_size != file_size
+                || record.file_modified.timestamp() as i32 != file_modified)
         }
         None => Ok(true), // New file, needs processing
     }
@@ -66,7 +70,8 @@ pub async fn needs_processing_relative(
     match existing {
         Some(record) => {
             // Check if file has changed
-            Ok(record.file_size != file_size || record.file_modified.timestamp() as i32 != file_modified)
+            Ok(record.file_size != file_size
+                || record.file_modified.timestamp() as i32 != file_modified)
         }
         None => Ok(true), // New file, needs processing
     }
@@ -84,7 +89,7 @@ pub async fn mark_file_processed(
     let file_modified_dt = chrono::DateTime::from_timestamp(file_modified as i64, 0)
         .unwrap_or(now)
         .with_timezone(&chrono::FixedOffset::east_opt(0).unwrap());
-    
+
     let model = processed_files::ActiveModel {
         id: NotSet,
         file_path: Set(file_path.to_string()),
@@ -105,7 +110,7 @@ pub async fn mark_file_processed(
                     processed_files::Column::RecordCount,
                     processed_files::Column::ProcessedAt,
                 ])
-                .to_owned()
+                .to_owned(),
         )
         .exec(db)
         .await?;
@@ -126,7 +131,7 @@ pub async fn mark_file_processed_relative(
     let file_modified_dt = chrono::DateTime::from_timestamp(file_modified as i64, 0)
         .unwrap_or(now)
         .with_timezone(&chrono::FixedOffset::east_opt(0).unwrap());
-    
+
     let model = processed_files::ActiveModel {
         id: NotSet,
         file_path: Set(file_path.to_string()),
@@ -148,7 +153,7 @@ pub async fn mark_file_processed_relative(
                     processed_files::Column::ProcessedAt,
                     processed_files::Column::RelativePath,
                 ])
-                .to_owned()
+                .to_owned(),
         )
         .exec(db)
         .await?;
@@ -188,7 +193,7 @@ pub async fn set_setting(db: &DbConn, key: &str, value: &str) -> Result<(), DbEr
         .on_conflict(
             OnConflict::column(settings::Column::Key)
                 .update_column(settings::Column::Value)
-                .to_owned()
+                .to_owned(),
         )
         .exec(db)
         .await?;
@@ -296,10 +301,7 @@ pub async fn cleanup_old_errors(db: &DbConn, days: i64) -> Result<u64, DbErr> {
 // ==================== Lock Management (Master/Follower) ====================
 
 /// Acquire the watcher lock (master role)
-pub async fn acquire_lock(
-    db: &DbConn,
-    holder_name: &str,
-) -> Result<String, DbErr> {
+pub async fn acquire_lock(db: &DbConn, holder_name: &str) -> Result<String, DbErr> {
     let instance_id = Uuid::new_v4().to_string();
     let now = Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap());
 
@@ -323,7 +325,7 @@ pub async fn acquire_lock(
                     watcher_lock::Column::LastHeartbeat,
                     watcher_lock::Column::IsActive,
                 ])
-                .to_owned()
+                .to_owned(),
         )
         .exec(db)
         .await?;
@@ -332,10 +334,7 @@ pub async fn acquire_lock(
 }
 
 /// Update heartbeat for active lock holder
-pub async fn update_heartbeat(
-    db: &DbConn,
-    instance_id: &str,
-) -> Result<bool, DbErr> {
+pub async fn update_heartbeat(db: &DbConn, instance_id: &str) -> Result<bool, DbErr> {
     let now = Utc::now();
 
     let result = watcher_lock::Entity::update_many()
@@ -349,10 +348,7 @@ pub async fn update_heartbeat(
 }
 
 /// Release the lock
-pub async fn release_lock(
-    db: &DbConn,
-    instance_id: &str,
-) -> Result<(), DbErr> {
+pub async fn release_lock(db: &DbConn, instance_id: &str) -> Result<(), DbErr> {
     watcher_lock::Entity::update_many()
         .col_expr(watcher_lock::Column::IsActive, Expr::value(false))
         .filter(watcher_lock::Column::HolderId.eq(instance_id))

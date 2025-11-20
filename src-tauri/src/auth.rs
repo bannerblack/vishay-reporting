@@ -1,9 +1,9 @@
-use whoami;
-use sea_orm::{EntityTrait, QueryFilter, ColumnTrait, PaginatorTrait};
-use serde::{Deserialize, Serialize};
-use entity::user;
-use tauri::State;
 use crate::AppState;
+use entity::user;
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
+use serde::{Deserialize, Serialize};
+use tauri::State;
+use whoami;
 
 // Hardcoded admin password for initial setup
 const ADMIN_SETUP_PASSWORD: &str = "vishay_admin_2025";
@@ -58,8 +58,8 @@ pub async fn authenticate_user(state: State<'_, AppState>) -> Result<Authenticat
     {
         Some(user_model) => {
             // Parse permissions from JSON string
-            let permissions: Vec<String> = serde_json::from_str(&user_model.permissions)
-                .unwrap_or_else(|_| vec![]);
+            let permissions: Vec<String> =
+                serde_json::from_str(&user_model.permissions).unwrap_or_else(|_| vec![]);
 
             Ok(AuthenticatedUser {
                 id: user_model.id,
@@ -108,7 +108,11 @@ pub fn validate_admin_password(password: String) -> Result<bool, String> {
 
 /// Create first admin user during initial setup (requires admin password)
 #[tauri::command]
-pub async fn create_initial_admin(state: State<'_, AppState>, password: String, user_data: crate::user::UserData) -> Result<crate::user::UserResponse, String> {
+pub async fn create_initial_admin(
+    state: State<'_, AppState>,
+    password: String,
+    user_data: crate::user::UserData,
+) -> Result<crate::user::UserResponse, String> {
     // Validate admin password
     if password != ADMIN_SETUP_PASSWORD {
         return Err("Invalid admin password".to_string());
@@ -135,7 +139,7 @@ pub async fn create_initial_admin(state: State<'_, AppState>, password: String, 
 pub async fn admin_create_user(
     state: State<'_, AppState>,
     admin_username: String,
-    user_data: crate::user::UserData
+    user_data: crate::user::UserData,
 ) -> Result<crate::user::UserResponse, String> {
     // Verify the requester is an admin
     let db = &*state.core_db;
@@ -148,8 +152,8 @@ pub async fn admin_create_user(
         .ok_or_else(|| "Admin user not found".to_string())?;
 
     // Check if admin has admin permission
-    let permissions: Vec<String> = serde_json::from_str(&admin.permissions)
-        .unwrap_or_else(|_| vec![]);
+    let permissions: Vec<String> =
+        serde_json::from_str(&admin.permissions).unwrap_or_else(|_| vec![]);
 
     if !permissions.contains(&"admin".to_string()) {
         return Err("Unauthorized: Admin permission required".to_string());
@@ -161,7 +165,11 @@ pub async fn admin_create_user(
 
 /// Check if a user has a specific permission
 #[tauri::command]
-pub async fn user_has_permission(state: State<'_, AppState>, username: String, permission: String) -> Result<bool, String> {
+pub async fn user_has_permission(
+    state: State<'_, AppState>,
+    username: String,
+    permission: String,
+) -> Result<bool, String> {
     let db = &*state.core_db;
 
     let user_model = user::Entity::find()
@@ -171,8 +179,8 @@ pub async fn user_has_permission(state: State<'_, AppState>, username: String, p
         .map_err(|e| format!("Failed to fetch user: {}", e))?
         .ok_or_else(|| "User not found".to_string())?;
 
-    let permissions: Vec<String> = serde_json::from_str(&user_model.permissions)
-        .unwrap_or_else(|_| vec![]);
+    let permissions: Vec<String> =
+        serde_json::from_str(&user_model.permissions).unwrap_or_else(|_| vec![]);
 
     Ok(permissions.contains(&permission))
 }

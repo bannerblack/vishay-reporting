@@ -55,21 +55,9 @@ impl MigrationTrait for Migration {
                             .auto_increment()
                             .primary_key(),
                     )
-                    .col(
-                        ColumnDef::new(FG::FG)
-                            .string()
-                            .not_null()
-                    )
-                    .col(
-                        ColumnDef::new(FG::Rev)
-                            .string()
-                            .not_null()
-                    )
-                    .col(
-                        ColumnDef::new(FG::Customer)
-                            .string()
-                            .not_null()
-                    )
+                    .col(ColumnDef::new(FG::FG).string().not_null())
+                    .col(ColumnDef::new(FG::Rev).string().not_null())
+                    .col(ColumnDef::new(FG::Customer).string().not_null())
                     .to_owned(),
             )
             .await?;
@@ -221,7 +209,7 @@ enum FG {
     Id,
     FG,
     Rev,
-    Customer
+    Customer,
 }
 
 #[derive(DeriveIden)]

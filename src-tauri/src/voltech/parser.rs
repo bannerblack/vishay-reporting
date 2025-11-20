@@ -1,10 +1,10 @@
 // Parser integration with SeaORM database
-use entity_voltech::{test_results};
-use sea_orm::{entity::*, DbConn, DbErr, Set, ActiveValue::NotSet};
+use entity_voltech::test_results;
 use sea_orm::sea_query::OnConflict;
+use sea_orm::{entity::*, ActiveValue::NotSet, DbConn, DbErr, Set};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
-use serde_json::Value;
 use std::path::Path;
 
 // Optimized parser functions (from voltech_parsing)
@@ -16,7 +16,7 @@ pub fn is_float(s: &str) -> bool {
     let bytes = s.as_bytes();
     let mut has_digit = false;
     let mut has_dot = false;
-    
+
     for (i, &b) in bytes.iter().enumerate() {
         match b {
             b'0'..=b'9' => has_digit = true,
@@ -48,7 +48,7 @@ fn combine_header(header1: &[String], header2: &[String]) -> Vec<String> {
     for i in 0..max_len {
         let h1 = header1.get(i).map(|s| s.as_str()).unwrap_or("");
         let h2 = header2.get(i).map(|s| s.as_str()).unwrap_or("");
-        
+
         if h1.is_empty() {
             temp_header.push(h2.trim().to_string());
         } else if h2.is_empty() {
@@ -69,7 +69,7 @@ fn combine_header(header1: &[String], header2: &[String]) -> Vec<String> {
         }
 
         let stored_len = 9.min(stored_test.len());
-        
+
         match item.as_str() {
             "Maximum" => {
                 let mut s = String::with_capacity(stored_len + 7);
@@ -82,7 +82,7 @@ fn combine_header(header1: &[String], header2: &[String]) -> Vec<String> {
                 s.push_str(&stored_test[..stored_len]);
                 s.push_str("Reading");
                 final_header.push(s);
-                
+
                 let mut s = String::with_capacity(stored_len + 9);
                 s.push_str(&stored_test[..stored_len]);
                 s.push_str("Pass/Fail");
@@ -93,7 +93,7 @@ fn combine_header(header1: &[String], header2: &[String]) -> Vec<String> {
                 s.push_str(&stored_test[..stored_len]);
                 s.push_str("Polarity");
                 final_header.push(s);
-                
+
                 let mut s = String::with_capacity(stored_len + 17);
                 s.push_str(&stored_test[..stored_len]);
                 s.push_str("Polarity Pass/Fail");
@@ -140,13 +140,13 @@ fn parse_csv_line(line: &str) -> Vec<String> {
     let mut fields = Vec::with_capacity(20);
     let mut current_field = String::with_capacity(32);
     let mut in_quotes = false;
-    
+
     let bytes = line.as_bytes();
     let mut i = 0;
-    
+
     while i < bytes.len() {
         let b = bytes[i];
-        
+
         match b {
             b'"' => {
                 in_quotes = !in_quotes;
@@ -161,7 +161,7 @@ fn parse_csv_line(line: &str) -> Vec<String> {
         }
         i += 1;
     }
-    
+
     fields.push(current_field);
     fields
 }
@@ -207,13 +207,17 @@ fn convert_to_active_model(
                 _ => {
                     // Store all measurement values as JSON
                     if let Ok(int_val) = value.parse::<i64>() {
-                        measurements.insert(header_name.clone(), Value::Number(serde_json::Number::from(int_val)));
+                        measurements.insert(
+                            header_name.clone(),
+                            Value::Number(serde_json::Number::from(int_val)),
+                        );
                     } else if is_float(value) {
                         if let Ok(num) = value.parse::<f64>() {
                             if let Some(json_num) = serde_json::Number::from_f64(num) {
                                 measurements.insert(header_name.clone(), Value::Number(json_num));
                             } else {
-                                measurements.insert(header_name.clone(), Value::String(value.clone()));
+                                measurements
+                                    .insert(header_name.clone(), Value::String(value.clone()));
                             }
                         } else {
                             measurements.insert(header_name.clone(), Value::String(value.clone()));
@@ -225,6 +229,9 @@ fn convert_to_active_model(
             }
         }
     }
+
+    // Parse date to normalized_date (DD-MM-YY format to NaiveDate)
+    let normalized_date = parse_voltech_date(date);
 
     test_results::ActiveModel {
         id: NotSet,
@@ -240,11 +247,33 @@ fn convert_to_active_model(
         file_path: Set(file_path.to_string()),
         measurements: Set(serde_json::to_string(&measurements).unwrap_or_else(|_| "{}".to_string())),
         created_at: NotSet,
+        normalized_date: Set(normalized_date),
     }
 }
 
+/// Parse voltech date format "DD-MM-YY" to NaiveDate
+/// Example: "19-11-25" -> 2025-11-19
+fn parse_voltech_date(date: &str) -> Option<chrono::NaiveDate> {
+    // Format: DD-MM-YY
+    let parts: Vec<&str> = date.split('-').collect();
+    if parts.len() != 3 {
+        return None;
+    }
+
+    let day = parts[0].parse::<u32>().ok()?;
+    let month = parts[1].parse::<u32>().ok()?;
+    let year = parts[2].parse::<i32>().ok()?;
+
+    // Assume 20YY for two-digit year
+    let full_year = 2000 + year;
+
+    chrono::NaiveDate::from_ymd_opt(full_year, month, day)
+}
+
 /// Parse a file and return active models ready for insertion
-pub fn parse_file_to_models(file_path: &str) -> Result<Vec<test_results::ActiveModel>, Box<dyn std::error::Error>> {
+pub fn parse_file_to_models(
+    file_path: &str,
+) -> Result<Vec<test_results::ActiveModel>, Box<dyn std::error::Error>> {
     let content = fs::read_to_string(file_path)?;
     let all_lines: Vec<&str> = content.lines().collect();
 
@@ -259,7 +288,7 @@ pub fn parse_file_to_models(file_path: &str) -> Result<Vec<test_results::ActiveM
     while i < all_lines.len() {
         let line = all_lines[i];
         let fields = parse_csv_line(line);
-        
+
         if fields.is_empty() {
             i += 1;
             continue;
@@ -269,7 +298,7 @@ pub fn parse_file_to_models(file_path: &str) -> Result<Vec<test_results::ActiveM
 
         if !first_field.is_empty() && first_field.as_bytes()[0].is_ascii_digit() {
             let mut test_line = fields;
-            
+
             if test_line.len() > 1 && test_line[1].is_empty() {
                 test_line[1] = "NONE".to_string();
             }
@@ -279,17 +308,13 @@ pub fn parse_file_to_models(file_path: &str) -> Result<Vec<test_results::ActiveM
             }
 
             let model = convert_to_active_model(
-                &header,
-                &test_line,
-                &part,
-                &operator,
-                &batch,
-                &date,
-                file_path,
+                &header, &test_line, &part, &operator, &batch, &date, file_path,
             );
             test_data.push(model);
-        }
-        else if matches!(first_field.as_str(), "Part #" | "Operator" | "Batch #" | "Result #") {
+        } else if matches!(
+            first_field.as_str(),
+            "Part #" | "Operator" | "Batch #" | "Result #"
+        ) {
             match first_field.as_str() {
                 "Part #" => {
                     part = fields.get(1).cloned().unwrap_or_default();
@@ -311,11 +336,9 @@ pub fn parse_file_to_models(file_path: &str) -> Result<Vec<test_results::ActiveM
                 }
                 _ => {}
             }
-        }
-        else if first_field.starts_with("Fil") {
+        } else if first_field.starts_with("Fil") {
             date = clean_date(first_field);
-        }
-        else if first_field.starts_with("Test Date") {
+        } else if first_field.starts_with("Test Date") {
             date = parse_test_date(first_field).to_string();
         }
 
@@ -326,28 +349,23 @@ pub fn parse_file_to_models(file_path: &str) -> Result<Vec<test_results::ActiveM
 }
 
 /// Parse and insert a file into the database using SeaORM bulk insert
-pub async fn parse_and_insert_file(
-    db: &DbConn,
-    file_path: &str,
-) -> Result<usize, DbErr> {
+pub async fn parse_and_insert_file(db: &DbConn, file_path: &str) -> Result<usize, DbErr> {
     // Get file metadata
     let path = Path::new(file_path);
     let metadata = fs::metadata(path)
         .map_err(|e| DbErr::Custom(format!("Failed to read file metadata: {}", e)))?;
     let file_size = metadata.len() as i32;
-    let file_modified = metadata.modified()
+    let file_modified = metadata
+        .modified()
         .map_err(|e| DbErr::Custom(format!("Failed to read file modified time: {}", e)))?
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|e| DbErr::Custom(format!("Invalid file modified time: {}", e)))?
         .as_secs() as i32;
 
     // Check if file needs processing using operations module
-    let needs_processing = crate::voltech::operations::needs_processing(
-        db, 
-        file_path, 
-        file_size, 
-        file_modified
-    ).await?;
+    let needs_processing =
+        crate::voltech::operations::needs_processing(db, file_path, file_size, file_modified)
+            .await?;
 
     if !needs_processing {
         return Ok(0); // Already processed, no changes
@@ -362,9 +380,12 @@ pub async fn parse_and_insert_file(
     if !models.is_empty() {
         test_results::Entity::insert_many(models)
             .on_conflict(
-                OnConflict::columns([test_results::Column::FilePath, test_results::Column::ResultNum])
-                    .do_nothing()
-                    .to_owned()
+                OnConflict::columns([
+                    test_results::Column::FilePath,
+                    test_results::Column::ResultNum,
+                ])
+                .do_nothing()
+                .to_owned(),
             )
             .exec(db)
             .await?;
@@ -376,8 +397,9 @@ pub async fn parse_and_insert_file(
         file_path,
         file_size,
         file_modified,
-        count as i32
-    ).await?;
+        count as i32,
+    )
+    .await?;
 
     Ok(count)
 }
@@ -411,24 +433,26 @@ pub async fn process_files_batch(
                     attempts += 1;
                     last_error = Some(e);
                     if attempts <= max_retries {
-                        tokio::time::sleep(tokio::time::Duration::from_secs(5 * attempts as u64)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_secs(5 * attempts as u64))
+                            .await;
                     }
                 }
             }
         }
 
         if let Some(err) = last_error {
-            let error_msg = format!("Error processing {} after {} attempts: {}", file_path, attempts, err);
+            let error_msg = format!(
+                "Error processing {} after {} attempts: {}",
+                file_path, attempts, err
+            );
             eprintln!("{}", error_msg);
             errors.push(error_msg);
-            
+
             // Log to database
-            if let Err(log_err) = crate::voltech::operations::log_parse_error(
-                db,
-                file_path,
-                &err.to_string(),
-                None
-            ).await {
+            if let Err(log_err) =
+                crate::voltech::operations::log_parse_error(db, file_path, &err.to_string(), None)
+                    .await
+            {
                 eprintln!("Failed to log error: {}", log_err);
             }
         }

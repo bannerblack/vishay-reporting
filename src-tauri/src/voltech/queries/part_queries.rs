@@ -1,6 +1,6 @@
+use entity_voltech::test_results;
 use sea_orm::*;
 use serde::{Deserialize, Serialize};
-use entity_voltech::test_results;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromQueryResult)]
 pub struct PartSummary {
@@ -119,9 +119,7 @@ pub async fn search_parts(
 }
 
 /// Get all unique part numbers
-pub async fn get_all_part_numbers(
-    db: &DatabaseConnection,
-) -> Result<Vec<String>, DbErr> {
+pub async fn get_all_part_numbers(db: &DatabaseConnection) -> Result<Vec<String>, DbErr> {
     #[derive(Debug, FromQueryResult)]
     struct PartResult {
         part: String,
@@ -133,13 +131,10 @@ pub async fn get_all_part_numbers(
         ORDER BY part ASC
     "#;
 
-    let results = PartResult::find_by_statement(Statement::from_sql_and_values(
-        DbBackend::Sqlite,
-        sql,
-        [],
-    ))
-    .all(db)
-    .await?;
+    let results =
+        PartResult::find_by_statement(Statement::from_sql_and_values(DbBackend::Sqlite, sql, []))
+            .all(db)
+            .await?;
 
     Ok(results.into_iter().map(|r| r.part).collect())
 }

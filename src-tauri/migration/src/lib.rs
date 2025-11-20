@@ -4,6 +4,7 @@ mod m20220101_000001_create_table;
 mod m20241115_000002_add_test_order;
 mod m20251115_150148_events_and_fixes;
 mod m20251119_000001_add_test_source_fields;
+mod m20251120_000001_add_fg_serialized;
 
 pub struct Migrator;
 
@@ -15,6 +16,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20241115_000002_add_test_order::Migration),
             Box::new(m20251115_150148_events_and_fixes::Migration),
             Box::new(m20251119_000001_add_test_source_fields::Migration),
+            Box::new(m20251120_000001_add_fg_serialized::Migration),
         ]
     }
 }

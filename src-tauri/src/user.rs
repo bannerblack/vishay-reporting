@@ -1,8 +1,8 @@
-use sea_orm::{Set, ActiveModelTrait, EntityTrait};
+use crate::AppState;
 use entity::user;
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use crate::AppState;
 
 // ============================================================================
 // DTOs
@@ -30,8 +30,8 @@ pub struct UserResponse {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserPreferences {
-    pub theme: String,        // "light", "dark", "blue", "green", "system"
-    pub language: String,     // "en", "es", "de", etc.
+    pub theme: String,    // "light", "dark", "blue", "green", "system"
+    pub language: String, // "en", "es", "de", etc.
     pub notifications: bool,
 }
 
@@ -57,7 +57,10 @@ pub struct UpdatePreferencesData {
 use sea_orm::DatabaseConnection;
 
 // Logic functions (testable)
-pub async fn create_user_logic(db: &DatabaseConnection, user_data: UserData) -> Result<UserResponse, String> {
+pub async fn create_user_logic(
+    db: &DatabaseConnection,
+    user_data: UserData,
+) -> Result<UserResponse, String> {
     let user = user::ActiveModel {
         name: Set(user_data.name),
         username: Set(user_data.username),
@@ -85,7 +88,10 @@ pub async fn create_user_logic(db: &DatabaseConnection, user_data: UserData) -> 
 
 // Tauri command wrappers
 #[tauri::command]
-pub async fn create_user(state: State<'_, AppState>, user_data: UserData) -> Result<UserResponse, String> {
+pub async fn create_user(
+    state: State<'_, AppState>,
+    user_data: UserData,
+) -> Result<UserResponse, String> {
     let db = &*state.core_db;
     create_user_logic(db, user_data).await
 }
@@ -112,10 +118,13 @@ pub async fn get_user(state: State<'_, AppState>, id: i32) -> Result<UserRespons
 }
 
 #[tauri::command]
-pub async fn get_user_by_username(state: State<'_, AppState>, username: String) -> Result<UserResponse, String> {
-    use sea_orm::QueryFilter;
+pub async fn get_user_by_username(
+    state: State<'_, AppState>,
+    username: String,
+) -> Result<UserResponse, String> {
     use sea_orm::ColumnTrait;
-    
+    use sea_orm::QueryFilter;
+
     let db = &*state.core_db;
 
     let user = user::Entity::find()
@@ -160,7 +169,11 @@ pub async fn get_all_users(state: State<'_, AppState>) -> Result<Vec<UserRespons
 }
 
 #[tauri::command]
-pub async fn update_user(state: State<'_, AppState>, id: i32, user_data: UserData) -> Result<UserResponse, String> {
+pub async fn update_user(
+    state: State<'_, AppState>,
+    id: i32,
+    user_data: UserData,
+) -> Result<UserResponse, String> {
     let db = &*state.core_db;
 
     let user = user::Entity::find_by_id(id)
@@ -203,8 +216,7 @@ pub async fn delete_user(state: State<'_, AppState>, id: i32) -> Result<String, 
         .ok_or_else(|| "User not found".to_string())?;
 
     let user: user::ActiveModel = user.into();
-    user
-        .delete(db)
+    user.delete(db)
         .await
         .map_err(|e| format!("Failed to delete user: {}", e))?;
 
@@ -221,16 +233,15 @@ pub async fn get_user_preferences(
     user_id: i32,
 ) -> Result<UserPreferences, String> {
     let db = &*state.core_db;
-    
+
     let user = user::Entity::find_by_id(user_id)
         .one(db)
         .await
         .map_err(|e| format!("Failed to fetch user: {}", e))?
         .ok_or_else(|| "User not found".to_string())?;
-    
-    let prefs: UserPreferences = serde_json::from_str(&user.preferences)
-        .unwrap_or_default();
-    
+
+    let prefs: UserPreferences = serde_json::from_str(&user.preferences).unwrap_or_default();
+
     Ok(prefs)
 }
 
@@ -241,23 +252,24 @@ pub async fn update_user_preferences(
     preferences_data: UpdatePreferencesData,
 ) -> Result<UserResponse, String> {
     let db = &*state.core_db;
-    
+
     let user = user::Entity::find_by_id(user_id)
         .one(db)
         .await
         .map_err(|e| format!("Failed to fetch user: {}", e))?
         .ok_or_else(|| "User not found".to_string())?;
-    
+
     let preferences_json = serde_json::to_string(&preferences_data.preferences)
         .map_err(|e| format!("Failed to serialize preferences: {}", e))?;
-    
+
     let mut user: user::ActiveModel = user.into();
     user.preferences = Set(preferences_json);
-    
-    let updated_user = user.update(db)
+
+    let updated_user = user
+        .update(db)
         .await
         .map_err(|e| format!("Failed to update preferences: {}", e))?;
-    
+
     Ok(UserResponse {
         id: updated_user.id,
         name: updated_user.name,

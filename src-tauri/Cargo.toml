@@ -42,6 +42,9 @@ regex = "1.10"
 
 migration = { path = "migration" }
 migration_voltech = { path = "migration_voltech" }
+migration_manual = { path = "migration_manual" }
+entity_manual = { path = "entity_manual" }
+tauri-plugin-dialog = "2"
 
 [workspace]
-members = [".", "entity", "entity_voltech", "migration", "migration_voltech"]
+members = [".", "entity", "entity_voltech", "entity_manual", "migration", "migration_voltech", "migration_manual"]
