@@ -4,6 +4,7 @@ mod auth;
 mod user;
 mod fg;
 mod report;
+mod event;
 mod joins;
 mod test;
 mod voltech;
@@ -132,6 +133,8 @@ pub fn run() {
             user::get_all_users,
             user::update_user,
             user::delete_user,
+            user::get_user_preferences,
+            user::update_user_preferences,
             
             // FG CRUD
             fg::create_fg,
@@ -147,6 +150,15 @@ pub fn run() {
             report::get_all_reports,
             report::update_report,
             report::delete_report,
+
+            // Event CRUD
+            event::create_event,
+            event::get_event,
+            event::get_all_events,
+            event::update_event,
+            event::delete_event,
+            event::complete_event,
+            event::get_events_by_user,
             
             // Test CRUD
             test::create_test,

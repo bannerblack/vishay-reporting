@@ -3,10 +3,13 @@
 	import * as Breadcrumb from "$lib/components/ui/breadcrumb/index.js";
 	import { Separator } from "$lib/components/ui/separator/index.js";
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
-	import { createUserContext, setUserContext } from '$lib/context/user-context.svelte';
+	import { createUserContext, getUserContext, setUserContext } from '$lib/context/user-context.svelte';
+	import { createPreferencesContext, setPreferencesContext } from '$lib/context/preferences-context.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import ButtonGroup from "$lib/components/ui/button-group/button-group.svelte";
+	import Button from "$lib/components/ui/button/button.svelte";
 
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.svg';
@@ -16,6 +19,10 @@
 	// Create and set user context
 	const userContext = createUserContext();
 	setUserContext(userContext);
+
+	// Create and set preferences context
+	const preferencesContext = createPreferencesContext();
+	setPreferencesContext(preferencesContext);
 
 	// Initialize authentication on mount
 	onMount(async () => {
@@ -27,9 +34,27 @@
 			user: userContext.user
 		});
 
+		// Load preferences after user is authenticated
+		if (userContext.user) {
+			await preferencesContext.load(userContext.user.id);
+		}
+
 		// Redirect to setup if needed and not already there
 		if (userContext.isInitialSetup && !window.location.pathname.includes('/setup')) {
 			goto('/setup');
+		}
+	});
+
+	// Watch for system theme changes
+	$effect(() => {
+		if (typeof window !== 'undefined' && preferencesContext.preferences.theme === 'system') {
+			const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+			const handleChange = () => {
+				// Re-apply theme when system preference changes
+				preferencesContext['applyTheme'](preferencesContext.preferences.theme);
+			};
+			mediaQuery.addEventListener('change', handleChange);
+			return () => mediaQuery.removeEventListener('change', handleChange);
 		}
 	});
 
@@ -69,7 +94,7 @@
 	<Sidebar.Provider>
 		<AppSidebar />
 		<Sidebar.Inset>
-			<header class="flex h-16 shrink-0 items-center gap-2">
+			<header class="flex h-16 shrink-0 items-center gap-2 justify-between pr-4">
 				<div class="flex items-center gap-2 px-4">
 					<Sidebar.Trigger class="-ml-1" />
 					<Separator orientation="vertical" class="mr-2 data-[orientation=vertical]:h-4" />
@@ -84,6 +109,12 @@
 							</Breadcrumb.Item>
 						</Breadcrumb.List>
 					</Breadcrumb.Root>
+				</div>
+				<div>
+					<ButtonGroup>
+						<Button variant="outline" size="sm" class="text-xs">Theme</Button>
+						<Button variant="outline" size="sm" class="text-xs">Lang</Button>
+					</ButtonGroup>
 				</div>
 			</header>
 			<div class="flex flex-1 flex-col gap-4 p-4 pt-0">

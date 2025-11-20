@@ -18,6 +18,8 @@
 	import XCircleIcon from '@lucide/svelte/icons/x-circle';
 	import { onMount, onDestroy } from 'svelte';
 
+    import { tr } from '$lib/i18n/strings';
+
 	let { data } = $props();
 	const userContext = getUserContext();
 	const isAdmin = $derived(userContext.hasPermission('admin'));
@@ -147,13 +149,14 @@
 	}
 </script>
 
-<div class="container mx-auto py-6 space-y-6">
+<div class="container mx-auto py-6 space-y-6 col-span-3">
 	<!-- Header -->
 	<div class="space-y-2">
 		<h1 class="text-3xl font-bold">Full Historical Import</h1>
 		<p class="text-muted-foreground">
 			Build a complete voltech database from all available test files
 		</p>
+        <p>{tr('voltech.import.title')}</p>
 	</div>
 
 	<!-- Admin Warning -->

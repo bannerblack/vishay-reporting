@@ -2,6 +2,8 @@ import type { PageLoad } from './$types';
 import { voltech } from '$lib/db/database';
 import { error } from '@sveltejs/kit';
 
+export const prerender = false;
+
 export const load: PageLoad = async ({ params }) => {
 	try {
 		const [partSummary, batches, partStats] = await Promise.all([

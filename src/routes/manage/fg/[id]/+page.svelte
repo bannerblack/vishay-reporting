@@ -31,7 +31,10 @@
 				fg_id: fg.id,
 				report_id: null,
 				added_by: null,
-				order: maxOrder + 1
+				order: maxOrder + 1,
+				source_type: testData.source_type ?? 'other',
+				associated_test: testData.associated_test ?? null,
+				manual_override: testData.manual_override ?? null
 			};
 
 			const created = await createTest(fullTestData);

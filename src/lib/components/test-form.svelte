@@ -26,7 +26,10 @@
 		secondary_pins: '',
 		shorted_pins: '',
 		description: '',
-		order: 0
+		order: 0,
+		source_type: 'other',
+		associated_test: null as string | null,
+		manual_override: null as boolean | null
 	});
 
 	let isSubmitting = $state(false);
@@ -43,7 +46,10 @@
 			secondary_pins: '',
 			shorted_pins: '',
 			description: '',
-			order: 0
+			order: 0,
+			source_type: 'other',
+			associated_test: null,
+			manual_override: null
 		};
 	}
 
@@ -65,7 +71,10 @@
 				secondary_pins: formData.secondary_pins || null,
 				shorted_pins: formData.shorted_pins || null,
 				description: formData.description || null,
-				order: formData.order
+				order: formData.order,
+				source_type: formData.source_type,
+				associated_test: formData.associated_test,
+				manual_override: formData.manual_override
 			};
 
 			await onSubmit(testData);

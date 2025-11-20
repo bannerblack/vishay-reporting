@@ -49,7 +49,14 @@ export const newFgSchema = z.object({
 export const _userSchema = z.object({
 	id: z.number().int().positive(),
 	name: z.string().min(2),
-	email: z.string().email()
+	username: z.string()
+});
+
+export const newEventSchema = z.object({
+	originator_id: z.number().int().positive().nullish(),
+	target_id: z.number().int().positive().nullish(),
+	report_id: z.number().int().positive(),
+	comment: z.string().min(1)
 });
 
 export type winUser = [string, string];

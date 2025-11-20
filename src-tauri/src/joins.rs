@@ -182,6 +182,9 @@ pub async fn get_fg_with_tests(state: State<'_, AppState>, fg_id: i32) -> Result
                 created_at: t.created_at.to_string(),
                 updated_at: t.updated_at.to_string(),
                 order: t.order,
+                source_type: t.source_type,
+                associated_test: t.associated_test,
+                manual_override: t.manual_override,
             })
             .collect(),
     })
@@ -241,6 +244,9 @@ pub async fn get_fg_complete(state: State<'_, AppState>, fg_id: i32) -> Result<F
                 created_at: t.created_at.to_string(),
                 updated_at: t.updated_at.to_string(),
                 order: t.order,
+                source_type: t.source_type,
+                associated_test: t.associated_test,
+                manual_override: t.manual_override,
             })
             .collect(),
     })
@@ -318,6 +324,9 @@ pub async fn get_report_with_tests(state: State<'_, AppState>, report_id: i32) -
                 created_at: t.created_at.to_string(),
                 updated_at: t.updated_at.to_string(),
                 order: t.order,
+                source_type: t.source_type,
+                associated_test: t.associated_test,
+                manual_override: t.manual_override,
             })
             .collect(),
     })
@@ -374,6 +383,9 @@ pub async fn get_report_complete(state: State<'_, AppState>, report_id: i32) -> 
                 created_at: t.created_at.to_string(),
                 updated_at: t.updated_at.to_string(),
                 order: t.order,
+                source_type: t.source_type,
+                associated_test: t.associated_test,
+                manual_override: t.manual_override,
             })
             .collect(),
     })
@@ -571,6 +583,9 @@ pub async fn get_all_tests_by_fg(state: State<'_, AppState>, fg_id: i32) -> Resu
             created_at: t.created_at.to_string(),
             updated_at: t.updated_at.to_string(),
             order: t.order,
+            source_type: t.source_type,
+            associated_test: t.associated_test,
+            manual_override: t.manual_override,
         })
         .collect())
 }
@@ -604,6 +619,9 @@ pub async fn get_all_tests_by_report(state: State<'_, AppState>, report_id: i32)
             created_at: t.created_at.to_string(),
             updated_at: t.updated_at.to_string(),
             order: t.order,
+            source_type: t.source_type,
+            associated_test: t.associated_test,
+            manual_override: t.manual_override,
         })
         .collect())
 }
@@ -651,6 +669,9 @@ pub async fn get_available_tests_for_report(state: State<'_, AppState>, report_i
             created_at: t.created_at.to_string(),
             updated_at: t.updated_at.to_string(),
             order: t.order,
+            source_type: t.source_type,
+            associated_test: t.associated_test,
+            manual_override: t.manual_override,
         })
         .collect())
 }

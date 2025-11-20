@@ -19,6 +19,9 @@ export interface TestData {
 	description?: string | null;
 	added_by?: number | null;
 	order: number;
+	source_type: string;
+	associated_test?: string | null;
+	manual_override?: boolean | null;
 }
 
 export interface TestResponse {
@@ -38,6 +41,9 @@ export interface TestResponse {
 	created_at: string;
 	updated_at: string;
 	order: number;
+	source_type: string;
+	associated_test?: string | null;
+	manual_override?: boolean | null;
 }
 
 // ============================================================================

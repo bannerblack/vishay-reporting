@@ -49,7 +49,10 @@
 		shorted_pins: null as string | null,
 		description: null as string | null,
 		added_by: null as number | null,
-		order: null as number | null
+		order: null as number | null,
+		source_type: 'other',
+		associated_test: null as string | null,
+		manual_override: null as boolean | null
 	});
 
 	function openCreateDialog() {
@@ -69,7 +72,10 @@
 			shorted_pins: null,
 			description: null,
 			added_by: null,
-			order: null
+			order: null,
+			source_type: 'other',
+			associated_test: null,
+			manual_override: null
 		};
 		dialogOpen = true;
 	}
@@ -91,7 +97,10 @@
 			shorted_pins: test.shorted_pins ?? null,
 			description: test.description ?? null,
 			added_by: null,
-			order: test.order ?? null
+			order: test.order ?? null,
+			source_type: test.source_type,
+			associated_test: test.associated_test ?? null,
+			manual_override: test.manual_override ?? null
 		};
 		dialogOpen = true;
 	}
@@ -119,7 +128,10 @@
 
 			const testData: TestData = {
 				...formData,
-				order: orderValue
+				order: orderValue,
+				source_type: formData.source_type ?? 'other',
+				associated_test: formData.associated_test ?? null,
+				manual_override: formData.manual_override ?? null
 			};
 
 			if (editMode && currentTest) {

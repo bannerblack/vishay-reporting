@@ -31,7 +31,10 @@
 				report_id: report.id,
 				fg_id: report.fg_id,
 				order: assignedTests.length,
-				added_by: null
+				added_by: null,
+				source_type: testData.source_type ?? 'other',
+				associated_test: testData.associated_test ?? null,
+				manual_override: testData.manual_override ?? null
 			};
 
 			const created = await createTest(fullTestData);

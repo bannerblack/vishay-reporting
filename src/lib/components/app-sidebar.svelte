@@ -43,6 +43,14 @@
 					title: "Tests",
 					url: "/manage/test",
 				},
+				{
+					title: "Events",
+					url: "/event",
+				},
+				{
+					title: "New Events",
+					url: "/event/new",
+				},
 				...(canAccessUsers ? [{
 					title: "Users",
 					url: "/manage/user",
@@ -61,6 +69,10 @@
 				{
 					title: "Statistics",
 					url: "/voltech/stats",
+				},
+				{
+					title: "Batches",
+					url: "/voltech/batches",
 				},
 				...(canAccessManage ? [{
 					title: "Management",
@@ -120,7 +132,7 @@
 	const navSecondary = [
 		{
 			title: "Settings",
-			url: "#",
+			url: "/settings",
 			icon: Settings2Icon,
 		},
 	];

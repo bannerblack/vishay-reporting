@@ -28,6 +28,28 @@ pub struct UserResponse {
     pub updated_at: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserPreferences {
+    pub theme: String,        // "light", "dark", "blue", "green", "system"
+    pub language: String,     // "en", "es", "de", etc.
+    pub notifications: bool,
+}
+
+impl Default for UserPreferences {
+    fn default() -> Self {
+        Self {
+            theme: "system".to_string(),
+            language: "en".to_string(),
+            notifications: true,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdatePreferencesData {
+    pub preferences: UserPreferences,
+}
+
 // ============================================================================
 // CRUD Operations
 // ============================================================================
@@ -187,4 +209,62 @@ pub async fn delete_user(state: State<'_, AppState>, id: i32) -> Result<String, 
         .map_err(|e| format!("Failed to delete user: {}", e))?;
 
     Ok(format!("User {} deleted successfully", id))
+}
+
+// ============================================================================
+// Preferences Operations
+// ============================================================================
+
+#[tauri::command]
+pub async fn get_user_preferences(
+    state: State<'_, AppState>,
+    user_id: i32,
+) -> Result<UserPreferences, String> {
+    let db = &*state.core_db;
+    
+    let user = user::Entity::find_by_id(user_id)
+        .one(db)
+        .await
+        .map_err(|e| format!("Failed to fetch user: {}", e))?
+        .ok_or_else(|| "User not found".to_string())?;
+    
+    let prefs: UserPreferences = serde_json::from_str(&user.preferences)
+        .unwrap_or_default();
+    
+    Ok(prefs)
+}
+
+#[tauri::command]
+pub async fn update_user_preferences(
+    state: State<'_, AppState>,
+    user_id: i32,
+    preferences_data: UpdatePreferencesData,
+) -> Result<UserResponse, String> {
+    let db = &*state.core_db;
+    
+    let user = user::Entity::find_by_id(user_id)
+        .one(db)
+        .await
+        .map_err(|e| format!("Failed to fetch user: {}", e))?
+        .ok_or_else(|| "User not found".to_string())?;
+    
+    let preferences_json = serde_json::to_string(&preferences_data.preferences)
+        .map_err(|e| format!("Failed to serialize preferences: {}", e))?;
+    
+    let mut user: user::ActiveModel = user.into();
+    user.preferences = Set(preferences_json);
+    
+    let updated_user = user.update(db)
+        .await
+        .map_err(|e| format!("Failed to update preferences: {}", e))?;
+    
+    Ok(UserResponse {
+        id: updated_user.id,
+        name: updated_user.name,
+        username: updated_user.username,
+        preferences: updated_user.preferences,
+        permissions: updated_user.permissions,
+        created_at: updated_user.created_at.to_string(),
+        updated_at: updated_user.updated_at.to_string(),
+    })
 }

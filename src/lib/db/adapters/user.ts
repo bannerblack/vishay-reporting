@@ -22,6 +22,16 @@ export interface UserResponse {
 	updated_at: string;
 }
 
+export interface UserPreferences {
+	theme: string;        // "light", "dark", "blue", "green", "purple", "system"
+	language: string;     // "en", "es", "de", etc.
+	notifications: boolean;
+}
+
+export interface UpdatePreferencesData {
+	preferences: UserPreferences;
+}
+
 // ============================================================================
 // Adapter Functions
 // ============================================================================
@@ -71,5 +81,31 @@ export async function deleteUser(id: number): Promise<string> {
 		return await invoke<string>('delete_user', { id });
 	} catch (error) {
 		throw new Error(`Failed to delete user: ${error}`);
+	}
+}
+
+// ============================================================================
+// Preferences Functions
+// ============================================================================
+
+export async function getUserPreferences(userId: number): Promise<UserPreferences> {
+	try {
+		return await invoke<UserPreferences>('get_user_preferences', { userId });
+	} catch (error) {
+		throw new Error(`Failed to get user preferences: ${error}`);
+	}
+}
+
+export async function updateUserPreferences(
+	userId: number,
+	preferencesData: UpdatePreferencesData
+): Promise<UserResponse> {
+	try {
+		return await invoke<UserResponse>('update_user_preferences', {
+			userId,
+			preferencesData
+		});
+	} catch (error) {
+		throw new Error(`Failed to update user preferences: ${error}`);
 	}
 }

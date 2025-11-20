@@ -24,6 +24,9 @@ pub struct TestData {
     pub description: Option<String>,
     pub added_by: Option<i32>,
     pub order: i32,
+    pub source_type: String,
+    pub associated_test: Option<String>,
+    pub manual_override: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -44,6 +47,9 @@ pub struct TestResponse {
     pub created_at: String,
     pub updated_at: String,
     pub order: i32,
+    pub source_type: String,
+    pub associated_test: Option<String>,
+    pub manual_override: Option<bool>,
 }
 
 // ============================================================================
@@ -69,6 +75,9 @@ pub async fn create_test(state: State<'_, AppState>, test_data: TestData) -> Res
         description: Set(test_data.description),
         added_by: Set(test_data.added_by),
         order: Set(test_data.order),
+        source_type: Set(test_data.source_type),
+        associated_test: Set(test_data.associated_test),
+        manual_override: Set(test_data.manual_override),
         ..Default::default()
     };
 
@@ -94,6 +103,9 @@ pub async fn create_test(state: State<'_, AppState>, test_data: TestData) -> Res
         created_at: test_model.created_at.to_string(),
         updated_at: test_model.updated_at.to_string(),
         order: test_model.order,
+        source_type: test_model.source_type,
+        associated_test: test_model.associated_test,
+        manual_override: test_model.manual_override,
     })
 }
 
@@ -124,6 +136,9 @@ pub async fn get_test(state: State<'_, AppState>, id: i32) -> Result<TestRespons
         created_at: test_model.created_at.to_string(),
         updated_at: test_model.updated_at.to_string(),
         order: test_model.order,
+        source_type: test_model.source_type,
+        associated_test: test_model.associated_test,
+        manual_override: test_model.manual_override,
     })
 }
 
@@ -155,6 +170,9 @@ pub async fn get_all_tests(state: State<'_, AppState>) -> Result<Vec<TestRespons
             created_at: test_model.created_at.to_string(),
             updated_at: test_model.updated_at.to_string(),
             order: test_model.order,
+            source_type: test_model.source_type,
+            associated_test: test_model.associated_test,
+            manual_override: test_model.manual_override,
         })
         .collect())
 }
@@ -184,6 +202,9 @@ pub async fn update_test(state: State<'_, AppState>, id: i32, test_data: TestDat
     test_model.description = Set(test_data.description);
     test_model.added_by = Set(test_data.added_by);
     test_model.order = Set(test_data.order);
+    test_model.source_type = Set(test_data.source_type);
+    test_model.associated_test = Set(test_data.associated_test);
+    test_model.manual_override = Set(test_data.manual_override);
 
     let test_model: test::Model = test_model
         .update(db)
@@ -207,6 +228,9 @@ pub async fn update_test(state: State<'_, AppState>, id: i32, test_data: TestDat
         created_at: test_model.created_at.to_string(),
         updated_at: test_model.updated_at.to_string(),
         order: test_model.order,
+        source_type: test_model.source_type,
+        associated_test: test_model.associated_test,
+        manual_override: test_model.manual_override,
     })
 }
 
@@ -264,6 +288,9 @@ pub async fn assign_test_to_report(state: State<'_, AppState>, test_id: i32, rep
         created_at: test_model.created_at.to_string(),
         updated_at: test_model.updated_at.to_string(),
         order: test_model.order,
+        source_type: test_model.source_type,
+        associated_test: test_model.associated_test,
+        manual_override: test_model.manual_override,
     })
 }
 
@@ -302,6 +329,9 @@ pub async fn unassign_test_from_report(state: State<'_, AppState>, test_id: i32)
         created_at: test_model.created_at.to_string(),
         updated_at: test_model.updated_at.to_string(),
         order: test_model.order,
+        source_type: test_model.source_type,
+        associated_test: test_model.associated_test,
+        manual_override: test_model.manual_override,
     })
 }
 
