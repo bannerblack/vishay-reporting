@@ -24,3 +24,12 @@ vite.config.ts.timestamp-*
 
 # SQLite
 *.db
+
+# Voltech test data files
+*.atr
+
+# Rust build artifacts
+src-tauri/migration/target/
+src-tauri/migration_voltech/target/
+src-tauri/migration_event/target/
+src-tauri/migration_manual/target/
