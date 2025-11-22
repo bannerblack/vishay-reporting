@@ -6,12 +6,14 @@ import { invoke } from '@tauri-apps/api/core';
 
 export interface FGData {
 	fg: string;
+	serialized: boolean;
 	rev: string;
 	customer: string;
 }
 
 export interface FGResponse {
 	id: number;
+	serialized: boolean;
 	fg: string;
 	rev: string;
 	customer: string;

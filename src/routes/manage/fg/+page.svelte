@@ -9,6 +9,7 @@
 	import { createFG, updateFG, deleteFG, type FGData, type FGResponse } from '$lib/db/adapters/fg';
 	import { Plus, Pencil, Trash2, Package, Search } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
+	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 
 	let { data } = $props();
 	let fgs = $state<FGResponse[]>(data.fgs);
@@ -17,6 +18,7 @@
 	const filteredFGs = $derived(
 		fgs.filter(fg => 
 			fg.fg.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			fg.serialized.toString().toLowerCase().includes(searchQuery.toLowerCase()) ||
 			fg.rev.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			fg.customer.toLowerCase().includes(searchQuery.toLowerCase())
 		)
@@ -29,20 +31,21 @@
 	let formData = $state({
 		fg: '',
 		rev: '',
-		customer: ''
+		customer: '',
+		serialized: false
 	});
 
 	function openCreateDialog() {
 		editMode = false;
 		currentFG = null;
-		formData = { fg: '', rev: '', customer: '' };
+		formData = { fg: '', serialized: false, rev: '', customer: '' };
 		dialogOpen = true;
 	}
 
 	function openEditDialog(fg: FGResponse) {
 		editMode = true;
 		currentFG = fg;
-		formData = { fg: fg.fg, rev: fg.rev, customer: fg.customer };
+		formData = { fg: fg.fg, serialized: fg.serialized, rev: fg.rev, customer: fg.customer };
 		dialogOpen = true;
 	}
 
@@ -172,8 +175,12 @@
 				<Input id="fg" bind:value={formData.fg} placeholder="FG12345" />
 			</div>
 			<div class="grid gap-2">
-				<label for="rev" class="text-sm font-medium">Revision</label>
-				<Input id="rev" bind:value={formData.rev} placeholder="A" />
+				<label for="rev" class="text-sm font-medium">FG Revision</label>
+				<Input id="rev" bind:value={formData.rev} placeholder="Enter Revision" />
+			</div>
+			<div class="grid gap-2">
+				<label for="serialized" class="text-sm font-medium">Serialized</label>
+				<Checkbox id="serialized" bind:checked={formData.serialized} />
 			</div>
 			<div class="grid gap-2">
 				<label for="customer" class="text-sm font-medium">Customer</label>

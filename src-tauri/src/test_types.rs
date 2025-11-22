@@ -81,8 +81,9 @@ pub async fn find_associated_tests(
     // Query voltech database for tests with pattern in measurements JSON keys
     // The measurements field contains JSON like: {"LS 001": {...}, "LS   002": {...}}
     // We need to extract keys that contain the pattern
+    // Match part numbers that start with fg (e.g., "132520" matches "132520FTA", "132520PTA")
     let voltech_results = voltech_test_results::Entity::find()
-        .filter(voltech_test_results::Column::Part.eq(fg))
+        .filter(voltech_test_results::Column::Part.starts_with(fg))
         .all(voltech_db)
         .await?;
 
@@ -103,8 +104,9 @@ pub async fn find_associated_tests(
     }
 
     // Query manual database for tests with pattern in test name (case-insensitive)
+    // Match FG numbers that start with fg (e.g., "132520" matches "132520FTA", "132520PTA")
     let manual_results = manual_test_results::Entity::find()
-        .filter(manual_test_results::Column::Fg.eq(fg))
+        .filter(manual_test_results::Column::Fg.starts_with(fg))
         .all(manual_db)
         .await?;
 
