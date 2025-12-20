@@ -1,5 +1,6 @@
 use crate::AppState;
 use entity::report;
+use entity_voltech::test_results;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::{Deserialize, Serialize};
 use tauri::State;

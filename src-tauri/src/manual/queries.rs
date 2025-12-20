@@ -1,20 +1,19 @@
 use entity_manual::manual_test_results;
+use sea_orm::sea_query::Expr;
 use sea_orm::*;
 
 /// Get all unique test names for a specific FG
 pub async fn get_manual_test_names_for_fg(db: &DbConn, fg: &str) -> Result<Vec<String>, DbErr> {
-    let results = manual_test_results::Entity::find()
+    let test_names = manual_test_results::Entity::find()
+        .select_only()
+        .column(manual_test_results::Column::Test)
         .filter(manual_test_results::Column::Fg.eq(fg))
+        .distinct()
+        .into_tuple::<String>()
         .all(db)
         .await?;
 
-    let mut test_names: Vec<String> = results
-        .into_iter()
-        .map(|r| r.test)
-        .collect::<std::collections::HashSet<_>>()
-        .into_iter()
-        .collect();
-
+    let mut test_names = test_names;
     test_names.sort();
     Ok(test_names)
 }

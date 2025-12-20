@@ -1,7 +1,10 @@
 pub mod collector;
+pub mod debug;
 pub mod excel_generator;
+pub mod excel;
 pub mod template;
 pub mod validator;
+pub mod serialized;
 
 use crate::AppState;
 use std::fs;
@@ -10,6 +13,7 @@ use tauri::State;
 
 // Re-export the Tauri commands
 pub use collector::collect_report;
+pub use debug::debug_voltech_query;
 pub use validator::validate_report;
 
 /// Generate Excel report from collected data

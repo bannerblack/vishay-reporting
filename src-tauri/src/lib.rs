@@ -183,6 +183,7 @@ pub fn run() {
             report::get_all_reports,
             report::update_report,
             report::delete_report,
+            reports::serialized::get_serialized,
             // Event CRUD
             event::create_event,
             event::get_event,
@@ -273,7 +274,9 @@ pub fn run() {
             reports::validator::validate_report,
             reports::collector::collect_report,
             reports::generate_excel_report,
-            reports::save_excel_report
+            reports::save_excel_report,
+            reports::debug::debug_voltech_query,
+            reports::excel::create_ba_report
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {

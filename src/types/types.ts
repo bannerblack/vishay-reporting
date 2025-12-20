@@ -59,6 +59,15 @@ export const newEventSchema = z.object({
 	comment: z.string().min(1)
 });
 
+export const newReportSchema = z.object({
+	originator_id: z.number().int().positive().nullish(),
+	report_id: z.number().int().positive(),
+	sn_range: z.string().optional(),
+	jobNumber: z.string(),
+	split: z.string(),
+	dateCode: z.string()
+});
+
 export type winUser = [string, string];
 
 // get type from _userSchema

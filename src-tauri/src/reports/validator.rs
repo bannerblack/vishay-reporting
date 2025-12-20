@@ -90,6 +90,7 @@ pub async fn validate_report_data(
         let status = if test_model.source_type == "voltech" {
             validate_voltech_test(
                 &test_model,
+                &fg.fg,
                 &batch,
                 &serial_range,
                 is_serialized,
@@ -131,6 +132,7 @@ pub async fn validate_report_data(
 /// Validate a voltech test
 async fn validate_voltech_test(
     test_model: &test::Model,
+    fg_number: &str,
     batch: &Option<String>,
     serial_range: &Option<String>,
     is_serialized: bool,
@@ -144,15 +146,22 @@ async fn validate_voltech_test(
             // Parse serial range (e.g., "1001-1010")
             let parts: Vec<&str> = range.split('-').collect();
             if parts.len() == 2 {
-                // Query using LIKE pattern for measurements JSON containing the associated test key
-                let count = voltech_test_results::Entity::find()
-                    .filter(
-                        voltech_test_results::Column::Measurements
-                            .contains(&format!("\"{}\"", associated_test)),
-                    )
-                    .count(voltech_db)
-                    .await?;
-                (count > 0, count as i32)
+                if let (Ok(start), Ok(end)) = (parts[0].parse::<i32>(), parts[1].parse::<i32>()) {
+                    // Query for passing tests with matching FG (starts_with for FG+type+rev), serial range, and measurement key
+                    let count = voltech_test_results::Entity::find()
+                        .filter(voltech_test_results::Column::Part.starts_with(fg_number))
+                        .filter(voltech_test_results::Column::SerialNum.between(start.to_string(), end.to_string()))
+                        .filter(voltech_test_results::Column::PassFail.eq("Pass"))
+                        .filter(
+                            voltech_test_results::Column::Measurements
+                                .contains(&format!("\"{}\"", associated_test)),
+                        )
+                        .count(voltech_db)
+                        .await?;
+                    (count > 0, count as i32)
+                } else {
+                    (false, 0)
+                }
             } else {
                 (false, 0)
             }
@@ -173,6 +182,8 @@ async fn validate_voltech_test(
     } else {
         // Batch mode: find available test sessions grouped by date
         let results = voltech_test_results::Entity::find()
+            .filter(voltech_test_results::Column::Part.starts_with(fg_number))
+            .filter(voltech_test_results::Column::PassFail.eq("Pass"))
             .filter(
                 voltech_test_results::Column::Measurements
                     .contains(&format!("\"{}\"", associated_test)),

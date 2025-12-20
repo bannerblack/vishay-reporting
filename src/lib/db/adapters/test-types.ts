@@ -1,17 +1,14 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export interface AssociatedTests {
-	voltech_tests: string[];
-	manual_tests: string[];
-}
+export type AssociatedTests = string[];
 
 /**
  * Get all available test type options
- * @returns Array of test type names (e.g., ["Inductance", "Leakage"])
+ * @returns Array of test tuples names, description, test_type (e.g., [("Inductance", "Inductance measurements (LS series)", "Voltech"), ("Leakage", "Leakage inductance measurements (LL series)", "Voltech")])
  */
-export async function getTestTypes(): Promise<string[]> {
+export async function getTestTypes(): Promise<[string, string, string][]> {
 	try {
-		return await invoke<string[]>('get_test_types');
+		return await invoke<[string, string, string][]>('get_test_types');
 	} catch (error) {
 		throw new Error(`Failed to get test types: ${error}`);
 	}

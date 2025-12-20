@@ -1,5 +1,6 @@
 use entity_voltech::{prelude::*, test_results};
 use sea_orm::*;
+use sea_query::Expr;
 use serde::{Deserialize, Serialize};
 
 /// Search tests with filters
@@ -47,7 +48,18 @@ pub async fn search_tests(
     }
 
     if let Some(serial_num) = filter.serial_num {
-        query = query.filter(test_results::Column::SerialNum.eq(serial_num));
+        let serial_trim = serial_num.trim();
+        if serial_trim.chars().all(|c| c.is_ascii_digit()) {
+            // Try exact string match OR numeric match (handles leading zeros)
+            let n: i64 = serial_trim.parse().unwrap_or(0);
+            query = query.filter(
+                Condition::any()
+                    .add(test_results::Column::SerialNum.eq(serial_num.clone()))
+                    .add(Expr::cust(format!("CAST(serial_num AS INTEGER) = {}", n)))
+            );
+        } else {
+            query = query.filter(test_results::Column::SerialNum.eq(serial_num));
+        }
     }
 
     query = query.order_by_desc(test_results::Column::CreatedAt);
@@ -68,11 +80,25 @@ pub async fn get_tests_by_serial(
     db: &DatabaseConnection,
     serial_num: &str,
 ) -> Result<Vec<test_results::Model>, DbErr> {
-    TestResults::find()
-        .filter(test_results::Column::SerialNum.eq(serial_num))
-        .order_by_asc(test_results::Column::ResultNum)
-        .all(db)
-        .await
+    let serial_trim = serial_num.trim();
+    if serial_trim.chars().all(|c| c.is_ascii_digit()) {
+        let n: i64 = serial_trim.parse().unwrap_or(0);
+        TestResults::find()
+            .filter(
+                Condition::any()
+                    .add(test_results::Column::SerialNum.eq(serial_num.to_string()))
+                    .add(Expr::cust(format!("CAST(serial_num AS INTEGER) = {}", n))),
+            )
+            .order_by_asc(test_results::Column::ResultNum)
+            .all(db)
+            .await
+    } else {
+        TestResults::find()
+            .filter(test_results::Column::SerialNum.eq(serial_num))
+            .order_by_asc(test_results::Column::ResultNum)
+            .all(db)
+            .await
+    }
 }
 
 /// Get failed tests only
@@ -140,7 +166,17 @@ pub async fn count_tests(db: &DatabaseConnection, filter: TestSearchFilter) -> R
     }
 
     if let Some(serial_num) = filter.serial_num {
-        query = query.filter(test_results::Column::SerialNum.eq(serial_num));
+        let serial_trim = serial_num.trim();
+        if serial_trim.chars().all(|c| c.is_ascii_digit()) {
+            let n: i64 = serial_trim.parse().unwrap_or(0);
+            query = query.filter(
+                Condition::any()
+                    .add(test_results::Column::SerialNum.eq(serial_num.clone()))
+                    .add(Expr::cust(format!("CAST(serial_num AS INTEGER) = {}", n)))
+            );
+        } else {
+            query = query.filter(test_results::Column::SerialNum.eq(serial_num));
+        }
     }
 
     query.count(db).await

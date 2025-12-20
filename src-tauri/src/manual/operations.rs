@@ -24,9 +24,9 @@ pub async fn import_manual_csv_file(db: &DbConn, file_path: &str) -> Result<usiz
         return Ok(0);
     }
 
-    // Insert all test results
-    for result in test_results {
-        let active_model = manual_test_results::ActiveModel {
+    let active_models: Vec<manual_test_results::ActiveModel> = test_results
+        .into_iter()
+        .map(|result| manual_test_results::ActiveModel {
             result: Set(result.result),
             test: Set(result.test),
             fg: Set(result.fg),
@@ -45,13 +45,13 @@ pub async fn import_manual_csv_file(db: &DbConn, file_path: &str) -> Result<usiz
             created_at: Set(chrono::Utc::now().into()),
             normalized_date: Set(result.normalized_date),
             ..Default::default()
-        };
+        })
+        .collect();
 
-        active_model
-            .insert(db)
-            .await
-            .map_err(|e| format!("Failed to insert test result: {}", e))?;
-    }
+    manual_test_results::Entity::insert_many(active_models)
+        .exec(db)
+        .await
+        .map_err(|e| format!("Failed to batch insert test results: {}", e))?;
 
     // Mark file as processed
     let file_name = Path::new(file_path)

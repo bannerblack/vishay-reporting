@@ -4,6 +4,7 @@
 	import NavSecondary from "./nav-secondary.svelte";
 	import NavUser from "./nav-user.svelte";
 	import * as Sidebar from "$lib/components/ui/sidebar/index.js";
+
 	import CommandIcon from "@lucide/svelte/icons/command";
 	import PackageIcon from "@lucide/svelte/icons/package";
 	import FileTextIcon from "@lucide/svelte/icons/file-text";
@@ -13,6 +14,7 @@
 	import Settings2Icon from "@lucide/svelte/icons/settings-2";
 	import DatabaseIcon from "@lucide/svelte/icons/database";
 	import BarChart3Icon from "@lucide/svelte/icons/bar-chart-3";
+	
 	import type { ComponentProps } from "svelte";
 	import { getUserContext } from '$lib/context/user-context.svelte';
 
@@ -51,6 +53,14 @@
 					title: "New Events",
 					url: "/event/new",
 				},
+				{
+					title: "Manual",
+					url: "/manage/manual",
+				},
+				{
+					title: "Manual Add",
+					url: "/manage/manual/add",
+				},
 				...(canAccessUsers ? [{
 					title: "Users",
 					url: "/manage/user",
@@ -85,12 +95,16 @@
 		},
 		{
 			title: "Reports",
-			url: "/report",
+			url: "/generate/report",
 			icon: FileTextIcon,
 			items: [
 				{
 					title: "All Reports",
-					url: "/report",
+					url: "/generate/report",
+				},
+				{
+					title: "Report ID",
+					url: "/generate/report/2",
 				},
 			],
 		},

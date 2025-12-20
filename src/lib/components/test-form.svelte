@@ -10,6 +10,8 @@
 	import type { TestData } from '$lib/db/adapters/test';
 	import { testTypes, type AssociatedTests } from '$lib/db/database';
 	import { onMount } from 'svelte';
+	import { map } from 'zod';
+	import test from 'node:test';
 
 	interface Props {
 		onSubmit: (testData: Omit<TestData, 'added_by'>) => Promise<void>;
@@ -20,7 +22,14 @@
 		buttonText?: string;
 	}
 
-	let { onSubmit, onCancel, reportId, fgId, fgNumber, buttonText = 'Create Test' }: Props = $props();
+	let {
+		onSubmit,
+		onCancel,
+		reportId,
+		fgId,
+		fgNumber,
+		buttonText = 'Create Test'
+	}: Props = $props();
 
 	let formData = $state({
 		test_type: '',
@@ -40,10 +49,22 @@
 	});
 
 	let isSubmitting = $state(false);
-	let testTypeOptions = $state<string[]>([]);
-	let associatedTests = $state<AssociatedTests>({ voltech_tests: [], manual_tests: [] });
+	let testTypeOptions = $state<[string, string, string][]>([]);
+	let associatedTests = $state<AssociatedTests>([]);
 	let isLoadingTests = $state(false);
 	let selectedTestType = $state<string | undefined>(undefined);
+
+	// Example grouping by source_type (3rd element) - reactive derived so it updates when testTypeOptions changes
+	const grouped_tests = $derived(() => {
+		const acc: Record<string, { name: string; description: string }[]> = {};
+		for (const item of testTypeOptions) {
+			const [name, description, group] = item as unknown as [string, string, string];
+			const key = (group || 'Other').toString();
+			if (!acc[key]) acc[key] = [];
+			acc[key].push({ name, description });
+		}
+		return acc;
+	});
 
 	onMount(async () => {
 		try {
@@ -58,7 +79,7 @@
 		if (selectedTestType && fgNumber) {
 			loadAssociatedTests(selectedTestType, fgNumber);
 		} else {
-			associatedTests = { voltech_tests: [], manual_tests: [] };
+			associatedTests = [];
 		}
 	});
 
@@ -66,9 +87,10 @@
 		isLoadingTests = true;
 		try {
 			associatedTests = await testTypes.findTestsForType(fg, testType);
+			console.log(associatedTests);
 		} catch (error) {
 			console.error('Failed to load associated tests:', error);
-			associatedTests = { voltech_tests: [], manual_tests: [] };
+			associatedTests = [];
 		} finally {
 			isLoadingTests = false;
 		}
@@ -96,7 +118,7 @@
 
 	async function handleSubmit() {
 		if (isSubmitting) return;
-		
+
 		try {
 			isSubmitting = true;
 			const testData: Omit<TestData, 'added_by'> = {
@@ -130,18 +152,72 @@
 
 	// Get available tests based on source type
 	const availableTests = $derived(() => {
-		if (formData.source_type === 'voltech') {
-			return associatedTests.voltech_tests;
-		} else if (formData.source_type === 'manual') {
-			return associatedTests.manual_tests;
+		const source = (formData.source_type || '').toLowerCase();
+		if (source.includes('voltech')) {
+			return associatedTests ?? [];
+		} else if (source.includes('manual')) {
+			return associatedTests ?? [];
 		}
 		return [];
 	});
 </script>
 
-<div class="border rounded-lg p-4 space-y-4 bg-muted/50">
+<!-- <pre>{JSON.stringify(formData.source_type, null, 2)}</pre>
+<pre>{JSON.stringify(testTypeOptions, null, 2)}</pre>
+
+<pre>{JSON.stringify(grouped_tests(), null, 2)}</pre> -->
+
+<!-- Render grouped tests for debugging / visual verification -->
+{#each Object.keys(grouped_tests()) as group}
+	<div class="mt-2">
+		<h4 class="font-semibold">{group}</h4>
+		<ul class="ml-4 list-disc">
+			{#each grouped_tests()[group] as item}
+				<li>{item.name} — <span class="text-xs text-muted-foreground">{item.description}</span></li>
+			{/each}
+		</ul>
+	</div>
+{/each}
+
+{#if false}
+	<!-- no-op placeholder for future 'group selection' control (currently not used) -->
+{/if}
+
+{#if formData.source_type && formData.source_type.toLowerCase().includes('voltech')}
+	Voltech
+{:else if formData.source_type && formData.source_type.toLowerCase().includes('manual')}
+	Manual Electrical
+{/if}
+
+<div class="space-y-4 rounded-lg border bg-muted/50 p-4">
 	<h3 class="font-semibold">Create New Test</h3>
 	<div class="grid grid-cols-2 gap-4">
+		<!-- Source Type Selection -->
+		<div class="grid gap-2">
+			<Label for="source_type_select">Data Source</Label>
+			<Select.Root
+				type="single"
+				value={formData.source_type}
+				onValueChange={(value) => {
+					formData.source_type = value || 'other';
+					// Reset selected test type and associated tests when source changes
+					selectedTestType = undefined;
+					formData.test_type = '';
+					associatedTests = [];
+				}}
+			>
+				<Select.Trigger id="source_type_select">
+					{formData.source_type.charAt(0).toUpperCase() + formData.source_type.slice(1)}
+				</Select.Trigger>
+				<Select.Content>
+					<!-- Use group keys as Source Type options -->
+					{#each Object.keys(grouped_tests()) as option}
+						<Select.Item value={option}>{option}</Select.Item>
+					{/each}
+				</Select.Content>
+			</Select.Root>
+		</div>
+
 		<!-- Test Type Selection -->
 		<div class="grid gap-2">
 			<Label for="test_type_select">Test Type Category</Label>
@@ -157,56 +233,45 @@
 					{selectedTestType || 'Select test type...'}
 				</Select.Trigger>
 				<Select.Content>
-					{#each testTypeOptions as option}
-						<Select.Item value={option}>{option}</Select.Item>
+					{#each grouped_tests()[formData.source_type] ?? [] as item}
+						<Select.Item value={item.name}>{item.name}</Select.Item>
 					{/each}
 				</Select.Content>
 			</Select.Root>
 		</div>
 
-		<!-- Source Type Selection -->
-		<div class="grid gap-2">
-			<Label>Data Source</Label>
-			<RadioGroup.Root bind:value={formData.source_type} class="flex gap-4">
-				<div class="flex items-center space-x-2">
-					<RadioGroup.Item value="voltech" id="source-voltech" />
-					<Label for="source-voltech">Voltech</Label>
-				</div>
-				<div class="flex items-center space-x-2">
-					<RadioGroup.Item value="manual" id="source-manual" />
-					<Label for="source-manual">Manual</Label>
-				</div>
-				<div class="flex items-center space-x-2">
-					<RadioGroup.Item value="other" id="source-other" />
-					<Label for="source-other">Other</Label>
-				</div>
-			</RadioGroup.Root>
-		</div>
-
 		<!-- Associated Test Selection (only for voltech/manual) -->
 		{#if formData.source_type !== 'other' && selectedTestType}
-			<div class="grid gap-2 col-span-2">
+			<div class="col-span-2 grid gap-2">
 				<Label for="associated_test">
 					Associated Test
 					{#if isLoadingTests}
 						<span class="text-xs text-muted-foreground">(Loading...)</span>
 					{/if}
 				</Label>
+				<pre>{JSON.stringify(availableTests(), null, 2)}</pre>
 				<Select.Root
 					type="single"
 					value={formData.associated_test || undefined}
 					onValueChange={(value) => {
 						formData.associated_test = value || null;
 					}}
-					disabled={isLoadingTests || availableTests().length === 0}
+					disabled={isLoadingTests || (availableTests()?.length ?? 0) === 0}
 				>
 					<Select.Trigger id="associated_test">
-						{formData.associated_test || (availableTests().length === 0 ? 'No tests found' : 'Select associated test...')}
+						{formData.associated_test ||
+							((availableTests()?.length ?? 0) === 0 ? 'No tests found' : 'Select associated test...')}
 					</Select.Trigger>
 					<Select.Content>
-						{#each availableTests() as testName}
-							<Select.Item value={testName}>{testName}</Select.Item>
-						{/each}
+						{#if associatedTests.length > 0}
+							{#each associatedTests as item}
+								<Select.Item value={item}>{item}</Select.Item>
+							{/each}
+						{:else if associatedTests?.length > 0}
+							{#each associatedTests as item}
+								<Select.Item value={item}>{item}</Select.Item>
+							{/each}
+						{/if}
 					</Select.Content>
 				</Select.Root>
 			</div>
@@ -214,7 +279,7 @@
 
 		<!-- Manual Override Checkbox (only for 'other' source) -->
 		{#if formData.source_type === 'other'}
-			<div class="flex items-center space-x-2 col-span-2">
+			<div class="col-span-2 flex items-center space-x-2">
 				<Checkbox
 					id="manual_override"
 					checked={formData.manual_override ?? false}
@@ -260,11 +325,11 @@
 			<Label for="secondary_pins">Secondary Pins</Label>
 			<Input id="secondary_pins" bind:value={formData.secondary_pins} />
 		</div>
-		<div class="grid gap-2 col-span-2">
+		<div class="col-span-2 grid gap-2">
 			<Label for="shorted_pins">Shorted Pins</Label>
 			<Input id="shorted_pins" bind:value={formData.shorted_pins} />
 		</div>
-		<div class="grid gap-2 col-span-2">
+		<div class="col-span-2 grid gap-2">
 			<Label for="description">Description</Label>
 			<Textarea id="description" bind:value={formData.description} rows={3} />
 		</div>
@@ -275,9 +340,7 @@
 			{buttonText}
 		</Button>
 		{#if onCancel}
-			<Button variant="outline" onclick={onCancel} disabled={isSubmitting}>
-				Cancel
-			</Button>
+			<Button variant="outline" onclick={onCancel} disabled={isSubmitting}>Cancel</Button>
 		{/if}
 	</div>
 </div>
